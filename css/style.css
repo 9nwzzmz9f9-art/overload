@@ -1,0 +1,642 @@
+/* Light theme (user feedback — was dark-only). Same variable names
+   throughout the file, so nothing else here needed to change: --panel
+   stays "the lighter of the two backgrounds" relative to --bg, same
+   relationship the dark theme had (just inverted in absolute lightness),
+   which is what keeps cards/badges/borders reading correctly. */
+:root {
+  --bg: #f5f2ed;
+  --panel: #ffffff;
+  --border: #e1dcd2;
+  --text: #201d18;
+  --muted: #767063;
+  --accent: #f59e42;
+}
+
+* {
+  box-sizing: border-box;
+  /* Kills the double-tap-to-zoom gesture (and the ~300ms tap delay) on
+     every element, not just buttons — the repeated +/- taps on the reps
+     stepper were the main trigger. touch-action, not user-scalable=no
+     on the viewport meta tag, so pinch-zoom still works everywhere. */
+  touch-action: manipulation;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  padding: env(safe-area-inset-top, 1.5rem) 1rem env(safe-area-inset-bottom, 1.5rem);
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0.5rem 0 0.1rem;
+}
+
+h2 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 1.75rem 0 0.6rem;
+}
+
+h3 {
+  font-size: 1.1rem;
+  margin: 0 0 0.4rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.7rem;
+}
+
+.card p {
+  margin: 0.2rem 0;
+  font-size: 0.95rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+button {
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 0.9rem 1.2rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #1a1200;
+  min-height: 48px;
+  min-width: 48px;
+}
+
+button:active {
+  opacity: 0.8;
+}
+
+button:disabled {
+  opacity: 0.35;
+}
+
+input,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  min-height: 44px;
+}
+
+/* --- top nav --------------------------------------------------- */
+
+.top-nav {
+  display: flex;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.top-nav button {
+  background: transparent;
+  color: var(--muted);
+  padding: 0.5rem 0.2rem;
+  min-height: unset;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.top-nav button:hover {
+  color: var(--text);
+}
+
+/* --- screen layout ----------------------------------------------- */
+
+.screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.screen-header h1 {
+  margin: 0;
+}
+
+.back-link {
+  background: transparent;
+  color: var(--accent);
+  padding: 0.3rem 0;
+  min-height: unset;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.secondary-action {
+  display: block;
+  width: 100%;
+  background: var(--panel);
+  color: var(--accent);
+  border: 1px dashed var(--border);
+  margin: 0.75rem 0;
+}
+
+.danger-link {
+  background: transparent;
+  color: #e0654f;
+  padding: 0.4rem 0.5rem;
+  min-height: unset;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.icon-button {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0.3rem 0.6rem;
+  font-size: 1rem;
+}
+
+/* --- row cards ---------------------------------------------------- */
+
+.row-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.row-main {
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  min-height: unset;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  font-weight: 600;
+}
+
+.row-fields {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.inline-input,
+.inline-select {
+  min-height: 40px;
+}
+
+.inline-input-narrow {
+  width: 5.5rem;
+}
+
+/* --- tabs ------------------------------------------------------ */
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.tab {
+  background: var(--panel);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.5rem 1rem;
+  min-height: 40px;
+  text-transform: capitalize;
+}
+
+.tab-active {
+  background: var(--accent);
+  color: #1a1200;
+  border-color: var(--accent);
+}
+
+/* --- badge ------------------------------------------------------- */
+
+.badge {
+  display: inline-block;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+/* --- modal / picker sheet ------------------------------------------ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-end;
+  z-index: 100;
+}
+
+.modal-sheet {
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: 20px 20px 0 0;
+  padding: 1.25rem 1rem calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+}
+
+.modal-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  margin: 0;
+}
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.picker-close {
+  background: transparent;
+  color: var(--muted);
+  min-height: unset;
+}
+
+.picker-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.picker-filters .picker-filter {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.picker-search {
+  flex: 1;
+}
+
+.picker-section {
+  margin-top: 1.25rem;
+}
+
+.picker-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 500;
+  text-align: left;
+  border: 1px solid var(--border);
+  margin-bottom: 0.4rem;
+}
+
+.picker-create {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* --- block detail / set editing -------------------------------- */
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.checkbox-label input {
+  min-height: unset;
+  width: 20px;
+  height: 20px;
+}
+
+.set-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.set-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem;
+}
+
+.set-label {
+  font-weight: 700;
+  min-width: 3.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.field input,
+.field select {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+/* --- home screen -------------------------------------------------- */
+
+.resume-card {
+  border-color: var(--accent);
+}
+
+.start-button {
+  display: block;
+  width: 100%;
+  font-size: 1.15rem;
+  margin-top: 0.75rem;
+}
+
+/* --- active workout ------------------------------------------------- */
+
+.workout-card h1 {
+  margin-top: 0.1rem;
+}
+
+.target-display {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin: 0.3rem 0;
+}
+
+.big-input {
+  font-size: 1.2rem;
+  font-weight: 700;
+  width: 100%;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stepper-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+.link-button {
+  background: transparent;
+  color: var(--accent);
+  padding: 0.4rem 0;
+  min-height: unset;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: block;
+}
+
+.rest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-color: var(--accent);
+}
+
+.rest-countdown {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+/* Rest as the bulk of the screen (user feedback), with a small "up
+   next" strip below instead of the full logging card. */
+.rest-dominant {
+  border-color: var(--accent);
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+}
+
+.rest-countdown-big {
+  font-size: 4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  margin: 0.5rem 0 1.25rem;
+  color: var(--accent);
+}
+
+.rest-dominant .secondary-action {
+  max-width: 16rem;
+  margin: 0 auto;
+}
+
+.workout-card-compact {
+  margin-top: 0.7rem;
+}
+
+.compact-next-line {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0.1rem 0 0;
+}
+
+.plate-calc {
+  margin: 0.75rem 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.plate-calc-body {
+  margin-top: 0.5rem;
+}
+
+.plate-breakdown {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0.2rem 0;
+}
+
+.drop-line {
+  margin-left: 0.75rem;
+}
+
+.block-preview {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+
+.denom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0.75rem;
+}
+
+.denom-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.denom-row .inline-input-narrow {
+  width: 4.5rem;
+}
+
+.block-preview p {
+  margin: 0.15rem 0;
+}
+
+.drop-section {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+  border-radius: 0 10px 10px 0;
+}
+
+.drop-section .start-button {
+  margin-top: 0.5rem;
+}
+
+.workout-footer-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin-top: 0.75rem;
+}
+
+/* --- completion screen --------------------------------------------- */
+
+.completion-row {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.completion-status {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.decision-label {
+  font-weight: 700;
+  margin: 0 0 0.2rem;
+}
+
+.resolution-line {
+  color: var(--accent);
+  font-weight: 700;
+  margin: 0 0 0.2rem;
+}
+
+.completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.completion-actions .secondary-action {
+  width: auto;
+  margin: 0;
+}
+
+.bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.bulk-actions .secondary-action {
+  width: auto;
+  margin: 0;
+}
+
+.override-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.override-panel .inline-input-narrow {
+  width: 4.5rem;
+}
+
+.workout-manage-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.workout-manage-panel .secondary-action {
+  width: auto;
+  margin: 0;
+}
