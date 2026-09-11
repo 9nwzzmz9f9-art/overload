@@ -2,7 +2,7 @@
   "name": "Overload",
   "short_name": "Overload",
   "description": "Deterministic strength training logger and progression engine.",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
