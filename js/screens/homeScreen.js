@@ -3,6 +3,7 @@ import { repository } from "../repository.js";
 import { navigate } from "../router.js";
 import { LOGGING_LOCATIONS } from "../constants.js";
 import { computeTotalWeightLifted, computeDurationMs, formatDuration, formatTotalWeight } from "../workoutStats.js";
+import { getLocationLabels, labelFor } from "../locationLabels.js";
 
 const LAST_LOCATION_KEY = "overload:lastLocation";
 
@@ -32,17 +33,18 @@ export async function renderHomeScreen(root) {
 
   const routines = await repository.listRoutines();
   const activeWorkout = await repository.getActiveWorkout();
+  const labels = await getLocationLabels();
 
   if (activeWorkout) {
-    root.appendChild(renderResumeCard(activeWorkout, routines));
+    root.appendChild(renderResumeCard(activeWorkout, routines, labels));
   } else {
-    root.appendChild(await renderStartCard(routines));
+    root.appendChild(await renderStartCard(routines, labels));
   }
 
-  root.appendChild(await renderRecentWorkouts(root, routines));
+  root.appendChild(await renderRecentWorkouts(root, routines, labels));
 }
 
-function renderResumeCard(activeWorkout, routines) {
+function renderResumeCard(activeWorkout, routines, labels) {
   const routine = routines.find((r) => r.id === activeWorkout.routineId);
   const needsReview = activeWorkout.status === "awaitingProgression";
   const destination = needsReview
@@ -50,7 +52,7 @@ function renderResumeCard(activeWorkout, routines) {
     : `/workout/${activeWorkout.id}`;
   return el("section", { class: "card resume-card" }, [
     el("h2", { text: needsReview ? "Needs progression review" : "In progress" }),
-    el("p", { text: `${routine?.name ?? "Workout"} — ${activeWorkout.location}` }),
+    el("p", { text: `${routine?.name ?? "Workout"} — ${labelFor(labels, activeWorkout.location)}` }),
     el("button", {
       class: "start-button",
       text: needsReview ? "Review →" : "Resume →",
@@ -59,7 +61,7 @@ function renderResumeCard(activeWorkout, routines) {
   ]);
 }
 
-async function renderStartCard(routines) {
+async function renderStartCard(routines, labels) {
   const card = el("section", { class: "card" });
 
   if (routines.length === 0) {
@@ -83,7 +85,7 @@ async function renderStartCard(routines) {
       locationRow.appendChild(
         el("button", {
           class: `tab${location === selectedLocation ? " tab-active" : ""}`,
-          text: location,
+          text: labelFor(labels, location),
           onclick: () => {
             selectedLocation = location;
             storeLocation(location);
@@ -115,7 +117,7 @@ async function renderStartCard(routines) {
   return card;
 }
 
-async function renderRecentWorkouts(root, routines) {
+async function renderRecentWorkouts(root, routines, labels) {
   const section = el("section");
   section.appendChild(el("h2", { text: "Recent workouts" }));
 
@@ -127,7 +129,7 @@ async function renderRecentWorkouts(root, routines) {
 
   const list = el("div", { class: "list" });
   for (const workout of workouts) {
-    list.appendChild(await renderWorkoutRow(root, workout, routines));
+    list.appendChild(await renderWorkoutRow(root, workout, routines, labels));
   }
   section.appendChild(list);
   return section;
@@ -137,7 +139,7 @@ async function renderRecentWorkouts(root, routines) {
 // in this list are just history you're scanning, not something you're
 // about to act on (user feedback: keep review-style controls minimized
 // by default).
-async function renderWorkoutRow(root, workout, routines) {
+async function renderWorkoutRow(root, workout, routines, labels) {
   const routine = routines.find((r) => r.id === workout.routineId);
   const card = el("div", { class: "card" });
 
@@ -156,7 +158,10 @@ async function renderWorkoutRow(root, workout, routines) {
 
   card.appendChild(
     el("div", { class: "row-card" }, [
-      el("div", {}, [el("p", { text: `${routine?.name ?? "Workout"} — ${workout.location}` }), ...meta]),
+      el("div", {}, [
+        el("p", { text: `${routine?.name ?? "Workout"} — ${labelFor(labels, workout.location)}` }),
+        ...meta,
+      ]),
       el("span", { class: "badge", text: statusLabel(workout.status) }),
     ])
   );

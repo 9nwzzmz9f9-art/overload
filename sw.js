@@ -1,4 +1,4 @@
-const CACHE_NAME = "overload-shell-v16";
+const CACHE_NAME = "overload-shell-v17";
 
 const SHELL_FILES = [
   "./",
@@ -18,6 +18,8 @@ const SHELL_FILES = [
   "./js/migrations.js",
   "./js/dataExporter.js",
   "./js/dataImporter.js",
+  "./js/exerciseSwap.js",
+  "./js/locationLabels.js",
   "./js/seed.js",
   "./js/router.js",
   "./js/dom.js",

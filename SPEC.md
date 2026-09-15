@@ -236,11 +236,16 @@ resolve these, then flips to `complete` and writes the
 `progressionEvents` records.
 
 **Manual early progression:** on the completion screen, every logged
-slot — not just flagged ones — must offer a one-tap *Progress anyway*
-action that applies the increment even though the trigger wasn't
-reached. I regularly choose to move up before hitting 10. This writes a
-`progressionEvent` with reason `manualEdit` and must be as fast as
-accepting the automatic result.
+slot — not just flagged ones — must offer a one-tap override, collapsed
+behind an "Override" toggle by default (user feedback — most rows don't
+need attention). For a slot the engine already decided to hold, the
+override is *Progress anyway* (applies the increment even though the
+trigger wasn't reached — I regularly choose to move up early). For a
+slot the engine is *already* progressing, offering "Progress anyway"
+again reads as broken (user feedback) — the override there is the
+opposite instead: *Hold anyway*, reverting to the current weight. Either
+writes a `progressionEvent` with reason `manualEdit`/`held` and must be
+as fast as accepting the automatic result.
 
 **Note on rep ranges:** `repRangeLow` is the floor I use to *pick* the
 starting weight — dip below it and the below-range flow kicks in.
@@ -276,11 +281,12 @@ prevents.
 
 **Substitutions:** if I swap an exercise mid-workout, log it against the
 original slot with `wasSubstituted = true` and **skip progression** for
-that slot this session. "Log as a different exercise" on the Active
-Workout screen summons the same search/browse sheet as the exercise
-picker (§6.2) to name the substitute — it never creates or links a real
-exercise record, it only resolves to a name string for
-`substitutedExerciseName` (user feedback: originally free-text-only).
+that slot this session. The per-set "Log as a different exercise" toggle
+and the whole-exercise "Switch exercise" flow (§6, below) both resolve
+to a name via the same search/browse sheet as the exercise picker
+(§6.2) — neither ever creates or links a real exercise record, only a
+name string for `substitutedExerciseName` (user feedback: originally
+free-text-only).
 
 **Reopening/deleting a workout** (user feedback, added post-launch): a
 `complete` workout can be reopened for review, or deleted outright, from
@@ -350,15 +356,38 @@ backgrounding too). Then, per plan item:
 - Plate calculator, collapsed by default, expanding to show per-side
   loading using the location's plate profile
 - On log: auto-start rest timer, auto-advance to the next item in the
-  session plan. Use `navigator.vibrate` if present as a best-effort
-  haptic (iOS Safari does not implement it — treat this as a bonus for
-  browsers that do, not a requirement)
+  session plan — except a **superset**'s first leg (user feedback,
+  post-launch block type alongside single/alternatingPair: same
+  interleave as an alternating pair, but zero rest between the two
+  exercises, only after the pair; `sessionPlan.js`'s `restAfter` on each
+  plan item carries this). Use `navigator.vibrate` if present as a
+  best-effort haptic (iOS Safari does not implement it — treat this as a
+  bonus for browsers that do, not a requirement)
+- **Drop sets** (user feedback, post-launch): "+ Drop set" logs the
+  current entry as the slot's primary set, then lets me chain
+  reduced-weight, no-rest follow-ups (`dropOf` on `loggedSets` links each
+  back to its parent). Drops count toward total weight lifted but are
+  never themselves evaluated for progression or shown as "last session's"
+  performance — they're an extension of the primary set, not a
+  prescribed one.
 - Rest timer must survive backgrounding and tab switches. Store a target
   end timestamp and compute remaining — never a ticking in-memory
   counter. See §6.1 below for exactly what "survive" means on this
-  platform.
-- Swipe or tap to skip a set or exercise. Confirmation dialog on
-  back-navigation.
+  platform, including the 1-minute/30-second/3-2-1 alert cadence.
+- **Do this later** vs **Skip**: skipping a set or exercise drops it for
+  the rest of the workout; "do this later" (user feedback) instead
+  resurfaces it once everything else in the plan is done — not
+  interchangeable, and not what "switch exercise" (below) is for.
+- **Switch exercise** (user feedback, replacing an earlier
+  free-standing "swap this exercise for today" action): on the first set
+  of an exercise only, opens a choice between (a) trading this
+  exercise's remaining positions with another exercise still ahead in
+  today's workout — "the equipment for this one is occupied, let me do
+  that one now and come back to this one where that one would've been" —
+  matched pairwise by remaining occurrence order
+  (`exerciseSwap.js`), or (b) swapping the exercise's identity entirely
+  for the rest of the session (the substitution behavior above). Swiping
+  isn't implemented — tap to skip. Confirmation dialog on back-navigation.
 
 **Workout Complete** — the progression summary and below-range decisions
 described in §5.
@@ -412,13 +441,21 @@ fully usable state entirely through this screen. Empty states should
 route me here.
 
 **Settings** (user feedback — "where are the maximums set?") — the app
-default rest seconds, plus a per-location editor for `plateProfiles`:
-bar weight, the plate denominations on hand (count = total owned, the
+default rest seconds, a per-location editor for `plateProfiles`: bar
+weight, the plate denominations on hand (count = total owned, the
 calculator halves per side), and the four equipment ceilings the
 progression engine checks (§5). Locations here are the three real ones
 (`home` / `beach` / `florida`) — `other` mirrors `home` and has nothing
 of its own to edit. A location with no profile yet offers a one-tap
 "Create plate profile" with sensible defaults.
+
+**Location names** (user feedback, post-launch) — a text field per real
+location ("home" is called ___, etc.), stored in `appSettings.
+locationNames` and looked up through `locationLabels.js` everywhere a
+location is displayed. Display-only: the underlying ids
+(`home`/`beach`/`florida`, and `other`, which is never renameable) never
+change, so nothing keyed by location — `setTargets`, `routineBlocks`,
+`workouts`, the CSV/JSON export — is touched by a rename.
 
 ### 6.1 Rest timer and notifications (adapted from the dropped §6.1)
 
@@ -429,17 +466,23 @@ No lock-screen quick-log — see §0. What we can still do:
   (`visibilitychange`/`pageshow`), never by a `setInterval` assumed to
   keep ticking in the background — it won't.
 - While the tab is open and foregrounded, show a countdown and fire a
-  local `Notification` (if permission was granted) at the 30-second mark
-  and at zero, plus a `navigator.vibrate` call where supported.
+  local `Notification` (if permission was granted) at the 1-minute mark,
+  the 30-second mark, and at zero, plus a `navigator.vibrate` call where
+  supported.
 - Also fire a short synthesized beep (Web Audio `OscillatorNode` — no
-  asset file) at the same two marks (user feedback: "audio alert like a
-  traditional timer"). A single beep at 30 seconds, two quick beeps at
-  zero. Mobile browsers only let an `AudioContext` produce sound once
-  it's been unlocked from inside a real user-gesture handler, so every
-  button tap in the active-workout flow unlocks it — by the time a
-  timer callback (not itself a gesture) needs to beep, it already can.
-  Same best-effort treatment as vibrate/Notification: never required.
-  The cardio warm-up timer (§6) uses the same alert at its own zero-mark.
+  asset file) at the same marks, **plus a distinct short tick at 3, 2,
+  and 1 second left** (user feedback: "a chime at 1 minute, then a 3-2-1
+  go countdown"). A single heads-up beep at 1 minute and 30 seconds, a
+  quick tick at 3/2/1, two quick beeps at zero. Mobile browsers only let
+  an `AudioContext` produce sound once it's been unlocked from inside a
+  real user-gesture handler, so every button tap in the active-workout
+  flow unlocks it — but the context can also drift back to `suspended`
+  on its own mid-session (iOS does this after backgrounding), so every
+  play attempt tries to resume first rather than giving up the first
+  time it finds the context not running (user feedback: "the chime at
+  the end of timers isn't working" — this was the actual bug). Same
+  best-effort treatment as vibrate/Notification: never required. The
+  cardio warm-up timer (§6) uses the same alert cadence.
 - If the PWA is installed (Add to Home Screen) and running standalone on
   iOS 16.4+, `Notification` permission can be requested and notifications
   can still be shown — but iOS Safari does **not** support any form of

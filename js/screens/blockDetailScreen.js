@@ -77,7 +77,7 @@ async function renderExerciseSlot(block, slot, routineId, location, blockId, roo
           setNumber: nextSetNumber,
           currentWeight: 0,
           repRangeLow: 4,
-          repRangeHigh: 6, // progressionTriggerReps is derived from this — see repository.createSetTarget
+          repRangeHigh: 10, // progressionTriggerReps is derived from this — see repository.createSetTarget
           increment: exercise?.defaultIncrement ?? 5,
           restSeconds: settings.defaultRestSeconds,
         });
@@ -112,11 +112,18 @@ function renderSetRow(target, routineId, location, blockId, root) {
   }
   Object.values(fields).forEach((input) => input.addEventListener("change", save));
 
+  // Range low/high grouped in their own row so flex-wrap can never split
+  // the pair apart on a narrow screen (user feedback) — they wrap as one
+  // unit instead of drifting apart individually.
+  const rangeGroup = el("div", { class: "range-group" }, [
+    labeledField("Range low", fields.repRangeLow),
+    labeledField("Range high (= trigger)", fields.repRangeHigh),
+  ]);
+
   return el("div", { class: "set-row" }, [
     el("span", { class: "set-label", text: `Set ${target.setNumber}` }),
     labeledField("Weight", fields.currentWeight),
-    labeledField("Range low", fields.repRangeLow),
-    labeledField("Range high (= trigger)", fields.repRangeHigh),
+    rangeGroup,
     labeledField("Increment", fields.increment),
     labeledField("Rest (s)", fields.restSeconds),
     el("button", {

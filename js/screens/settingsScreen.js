@@ -8,6 +8,7 @@ import { repository } from "../repository.js";
 import { LOCATIONS } from "../constants.js";
 import { buildJsonExport, buildLoggedSetsCsv } from "../dataExporter.js";
 import { parseImport, describeCounts, importReplacingAll } from "../dataImporter.js";
+import { getLocationLabels, labelFor } from "../locationLabels.js";
 
 const CEILING_FIELDS = [
   ["barbellCeiling", "Barbell"],
@@ -30,8 +31,42 @@ export async function renderSettingsScreen(root, location = LOCATIONS[0]) {
   root.appendChild(el("h1", { text: "Settings" }));
 
   await renderDefaults(root);
+  await renderLocationNames(root);
   await renderPlateProfiles(root, location);
   renderExport(root);
+}
+
+// User feedback: "add an option to customize the names of the workout
+// locations." Display-only — see locationLabels.js.
+async function renderLocationNames(root) {
+  const settings = await repository.getAppSettings();
+  const names = { ...settings.locationNames };
+
+  const inputs = LOCATIONS.map((id) => {
+    const input = el("input", { type: "text", value: names[id] ?? id, class: "inline-input" });
+    input.addEventListener("change", async () => {
+      const value = input.value.trim();
+      if (!value) {
+        input.value = names[id] ?? id; // reject blank — reset to what's saved
+        return;
+      }
+      names[id] = value;
+      await repository.updateAppSettings({ locationNames: { ...names } });
+    });
+    return [id, input];
+  });
+
+  root.appendChild(
+    el(
+      "section",
+      { class: "card" },
+      [
+        el("h2", { text: "Location names" }),
+        el("p", { class: "muted", text: "Shown throughout the app — doesn't change any of your logged data." }),
+        ...inputs.map(([id, input]) => labeledField(`"${id}" is called`, input)),
+      ]
+    )
+  );
 }
 
 // SPEC.md §7.3. All data lives only in this device's IndexedDB — this is
@@ -145,13 +180,14 @@ async function renderPlateProfiles(root, location) {
   const section = el("section");
   section.appendChild(el("h2", { text: "Plate profiles" }));
 
+  const labels = await getLocationLabels();
   const tabs = el(
     "div",
     { class: "tabs" },
     LOCATIONS.map((loc) =>
       el("button", {
         class: loc === location ? "tab tab-active" : "tab",
-        text: loc,
+        text: labelFor(labels, loc),
         onclick: () => renderSettingsScreen(root, loc),
       })
     )
@@ -162,7 +198,9 @@ async function renderPlateProfiles(root, location) {
   const card = el("section", { class: "card" });
 
   if (!profile) {
-    card.appendChild(el("p", { class: "muted", text: `No plate profile for ${location} yet.` }));
+    card.appendChild(
+      el("p", { class: "muted", text: `No plate profile for ${labelFor(labels, location)} yet.` })
+    );
     card.appendChild(
       el("button", {
         class: "secondary-action",

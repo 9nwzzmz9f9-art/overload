@@ -12,6 +12,17 @@
   --accent: #f59e42;
 }
 
+/* Any element toggled via `el.hidden = true/false` must actually hide —
+   without this, a class rule that sets its own `display` (e.g. `display:
+   flex` on a panel) ties the browser's built-in `[hidden] { display:
+   none }` rule in specificity, and ours (loaded later) wins, so `hidden`
+   silently does nothing. This bit the Home screen's "Manage" toggle and
+   the completion screen's "Override" panel — !important guarantees
+   hidden always wins, for these and anything added later. */
+[hidden] {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
   /* Kills the double-tap-to-zoom gesture (and the ~300ms tap delay) on
@@ -386,6 +397,11 @@ select {
 .set-label {
   font-weight: 700;
   min-width: 3.5rem;
+}
+
+.range-group {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .field {

@@ -13,6 +13,7 @@
 import { el, clear } from "../dom.js";
 import { repository } from "../repository.js";
 import { navigate } from "../router.js";
+import { getLocationLabels, labelFor } from "../locationLabels.js";
 import {
   DECISION,
   evaluateLoggedSet,
@@ -66,10 +67,11 @@ export async function renderCompletionScreen(root, workoutId) {
   }
 
   const routine = await repository.getRoutine(workout.routineId);
+  const labels = await getLocationLabels();
   root.appendChild(
     el("div", { class: "screen-header" }, [
       el("h1", { text: "Workout complete" }),
-      el("span", { class: "badge", text: workout.location }),
+      el("span", { class: "badge", text: labelFor(labels, workout.location) }),
     ])
   );
   root.appendChild(
@@ -373,7 +375,20 @@ function buildFlaggedChoices(row, panel, applyResolution) {
 function buildGenericOverride(row, panel, applyResolution) {
   const row2 = el("div", { class: "completion-actions" });
 
-  if (row.decision.kind !== DECISION.CEILING_BLOCKED) {
+  if (row.decision.kind === DECISION.CEILING_BLOCKED) {
+    // The ceiling choices above already cover "progress" for this row.
+  } else if (row.decision.kind === DECISION.PROGRESSED) {
+    // The engine is already progressing this slot — offering "Progress
+    // anyway" here would be confusing (user feedback), so the override
+    // is the opposite: hold at the current weight instead.
+    row2.appendChild(
+      el("button", {
+        class: "secondary-action",
+        text: "Hold anyway",
+        onclick: () => applyResolution({ newWeight: row.decision.currentWeight, reason: "held" }),
+      })
+    );
+  } else {
     row2.appendChild(
       el("button", {
         class: "secondary-action",
@@ -390,10 +405,13 @@ function buildGenericOverride(row, panel, applyResolution) {
     );
   }
 
+  // Pre-filled with whatever's currently resolved (not always the
+  // original target) — otherwise re-opening the panel after applying a
+  // resolution looked like it had silently reverted (user feedback).
   const customInput = el("input", {
     type: "number",
     step: "0.5",
-    value: row.setTarget.currentWeight,
+    value: row.resolution ? row.resolution.newWeight : row.setTarget.currentWeight,
     class: "inline-input inline-input-narrow",
   });
   row2.appendChild(customInput);

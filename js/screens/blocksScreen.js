@@ -3,6 +3,7 @@ import { repository } from "../repository.js";
 import { navigate } from "../router.js";
 import { pickExercise } from "../exercisePicker.js";
 import { LOCATIONS } from "../constants.js";
+import { getLocationLabels, labelFor } from "../locationLabels.js";
 
 function chooseBlockType() {
   return new Promise((resolve) => {
@@ -39,7 +40,7 @@ function chooseBlockType() {
   });
 }
 
-function chooseSourceLocation(options) {
+function chooseSourceLocation(options, labels) {
   return new Promise((resolve) => {
     let close;
     const sheet = el("div", { class: "picker" }, [
@@ -47,7 +48,7 @@ function chooseSourceLocation(options) {
       ...options.map((loc) =>
         el("button", {
           class: "picker-row",
-          text: loc,
+          text: labelFor(labels, loc),
           onclick: () => {
             close();
             resolve(loc);
@@ -71,10 +72,11 @@ export async function renderBlocksScreen(root, routineId, location) {
 
   const exercises = await repository.listExercises({ includeArchived: true });
   const exerciseById = new Map(exercises.map((e) => [e.id, e]));
+  const labels = await getLocationLabels();
 
   root.appendChild(
     el("div", { class: "screen-header" }, [
-      el("h1", { text: `${routine.name} — ${location}` }),
+      el("h1", { text: `${routine.name} — ${labelFor(labels, location)}` }),
       el("button", {
         text: "+",
         onclick: async () => {
@@ -122,7 +124,7 @@ export async function renderBlocksScreen(root, routineId, location) {
           class: "secondary-action",
           text: "Copy from another location",
           onclick: async () => {
-            const source = await chooseSourceLocation(sourcesWithBlocks);
+            const source = await chooseSourceLocation(sourcesWithBlocks, labels);
             if (!source) return;
             await repository.duplicateRoutineToLocation(routineId, source, location);
             await renderBlocksScreen(root, routineId, location);

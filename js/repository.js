@@ -176,6 +176,11 @@ export const repository = {
       defaultIncrementCable: 5,
       defaultRestSeconds: 180,
       activeProgramId: null,
+      // Display-only relabeling of the three real locations (user
+      // feedback) — the underlying ids ("home"/"beach"/"florida") never
+      // change, so this never touches setTargets/routineBlocks/workouts
+      // or any query keyed by location. See locationLabels.js.
+      locationNames: { home: "Home", beach: "Beach", florida: "Florida" },
     };
     await db.put("appSettings", fallback);
     return fallback;
@@ -371,11 +376,16 @@ export const repository = {
       // unlike a skip, a deferred set resurfaces once everything else in
       // the plan is done. See workoutProgress.js's two-pass findResumeIndex.
       deferredSetKeys: [],
-      // "Swap this exercise for today" (user feedback): unlike the
+      // "Swap this exercise entirely" (user feedback): unlike the
       // per-set substitution toggle, this applies to every remaining set
       // of that exercise without re-prompting each time. Keyed by
       // exerciseId → substitute name.
       substitutedExercises: {},
+      // "Switch with another exercise in this workout" (user feedback):
+      // pairs of exercise ids whose remaining sets trade positions — see
+      // exerciseSwap.js. Applied in order each render, so re-swapping the
+      // same pair cancels out.
+      positionSwaps: [],
       completedWarmupKeys: [],
       // A 5-minute cardio warm-up offered at the start of every workout
       // (user feedback, not in the original spec) — same

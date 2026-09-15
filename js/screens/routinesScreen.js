@@ -2,17 +2,19 @@ import { el, clear } from "../dom.js";
 import { repository } from "../repository.js";
 import { navigate } from "../router.js";
 import { LOCATIONS } from "../constants.js";
+import { getLocationLabels, labelFor } from "../locationLabels.js";
 
 export async function renderRoutinesScreen(root, location) {
   clear(root);
 
+  const labels = await getLocationLabels();
   const locationTabs = el(
     "div",
     { class: "tabs" },
     LOCATIONS.map((loc) =>
       el("button", {
         class: loc === location ? "tab tab-active" : "tab",
-        text: loc,
+        text: labelFor(labels, loc),
         onclick: () => navigate(`/routines/${loc}`),
       })
     )
@@ -35,7 +37,10 @@ export async function renderRoutinesScreen(root, location) {
   );
   root.appendChild(locationTabs);
   root.appendChild(
-    el("p", { class: "muted", text: `Editing structure for: ${location}. Rotation order applies to all locations.` })
+    el("p", {
+      class: "muted",
+      text: `Editing structure for: ${labelFor(labels, location)}. Rotation order applies to all locations.`,
+    })
   );
 
   const routines = await repository.listRoutines();
