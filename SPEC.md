@@ -521,7 +521,8 @@ values:**
 |---|---|---|
 | `barbell`, `e-z curl bar` | barbell | +10 |
 | `dumbbell`, `kettlebell` | dumbbell | +5 |
-| `machine` | machine | +5 |
+| `machine` | machine (stack) | +5 |
+| plate-loaded machines (hand-tagged: leg press, hack squat, Leverage/Hammer-style, T-bar row, etc.) | plateLoaded | +10 |
 | `cable` | cable | +5 |
 | `body only` | bodyweight | n/a |
 | everything else | machine | +5 |
@@ -592,30 +593,44 @@ this app worth building; everything else is UI I can eyeball.
 
 ## 9. Seed data
 
-Deliberately minimal. I will author the real program through the
-Program Editor — that both populates the app and dogfoods the editor,
-which is the screen most likely to be quietly half-built.
+A fresh (empty) database is seeded with **no exercises, blocks or set
+targets** — the Exercises tab starts empty and the real program is
+authored through the Exercises tab and Program Editor. Only the
+structural minimum is seeded:
 
-Seed only enough to exercise every structural case, so the workout
-screen has something real to run against on day one:
-
-- The three locations: `home`, `beach`, `florida`
-- One routine (`Upper`) at `home`, containing:
-  - One `alternatingPair` block, 3 working sets each, with a warmup —
-    this proves interleaving
-  - One `single` block, 2 working sets, no warmup
-  - One `weightedBodyweight` exercise with a **negative** starting
-    weight — this proves assistance handling
-- Weights, rep ranges, increments per §5, and rest seconds. Use one
-  high-rep range (6–10) and one low-rep range (4–6) — the trigger always
-  equals `repRangeHigh` (§4), so seeding two different ranges is enough
-  to exercise the engine at two different trigger values
+- The four routines (`Upper`, `Lower`, `Push`, `Pull`)
 - A `plateProfile` for `home`: 45 lb bar, plates in 45/35/25/10/5/2.5,
-  and a `dumbbell` ceiling of 75 lb so the ceiling logic gets exercised
+  and a `dumbbell` ceiling of 75 lb
+- Default app settings
 
-Pick reasonable placeholder exercise names and weights. I'll replace
-them.
+(Earlier versions seeded placeholder exercises for exercising the
+engine; those were removed. Seeding only runs on an empty database, so
+existing data is never touched.)
 
 Leave `Lower`, `Push`, `Pull` and the `beach` / `florida` locations
 completely empty — the app must handle that gracefully and route me to
 the Program Editor.
+
+## 10. Per-routine set targets
+
+Set targets (weight, rep range, increment, rest, progression) belong to a
+**(routine, exercise, location, set number)**, not to the exercise alone.
+The same exercise in Upper and in Push is tracked independently — each
+progresses on its own from its own logged sets. IndexedDB v3 replaced the
+old `(exercise, location, set)` unique index accordingly.
+
+Migration (`migrations.js`, data-driven, also runs after an import):
+each legacy target goes to the first routine whose blocks use that
+exercise at that location, and every other such routine gets its own
+copy starting at the same weight. Progression events record `routineId`.
+
+## 11. Plate-loaded machines
+
+`equipmentCategory: "plateLoaded"` — machines loaded with plates (leg
+press, hack squat, Hammer-style presses/rows). Behaves like `machine` for
+progression (default increment +10, i.e. 5 lb per side; its own
+`plateLoadedCeiling` on the plate profile) but gets the barbell-style plate
+diagram. Each such exercise has an optional `startWeight` (the empty
+machine's carriage/sled weight, default 0 = the logged weight is plates
+only); the diagram subtracts it and splits the rest across two sides. It
+assumes symmetric loading from the location's plate profile.

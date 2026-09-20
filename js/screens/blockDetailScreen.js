@@ -56,7 +56,7 @@ async function renderExerciseSlot(block, slot, routineId, location, blockId, roo
   );
 
   const setsList = el("div", { class: "set-list" });
-  const targets = await repository.listSetTargetsForExercise(slot.exerciseId, location);
+  const targets = await repository.listSetTargetsForExercise(slot.exerciseId, location, routineId);
 
   targets.forEach((target) => {
     setsList.appendChild(renderSetRow(target, routineId, location, blockId, root));
@@ -72,6 +72,7 @@ async function renderExerciseSlot(block, slot, routineId, location, blockId, roo
         const settings = await repository.getAppSettings();
         const nextSetNumber = targets.length + 1;
         await repository.createSetTarget({
+          routineId,
           exerciseId: slot.exerciseId,
           location,
           setNumber: nextSetNumber,
@@ -112,28 +113,27 @@ function renderSetRow(target, routineId, location, blockId, root) {
   }
   Object.values(fields).forEach((input) => input.addEventListener("change", save));
 
-  // Range low/high grouped in their own row so flex-wrap can never split
-  // the pair apart on a narrow screen (user feedback) — they wrap as one
-  // unit instead of drifting apart individually.
-  const rangeGroup = el("div", { class: "range-group" }, [
-    labeledField("Range low", fields.repRangeLow),
-    labeledField("Range high (= trigger)", fields.repRangeHigh),
-  ]);
-
+  // Header (set label + remove) over a 3-column grid: two rows of data —
+  // Weight / Range low / Range high, then Increment / Rest (user feedback).
   return el("div", { class: "set-row" }, [
-    el("span", { class: "set-label", text: `Set ${target.setNumber}` }),
-    labeledField("Weight", fields.currentWeight),
-    rangeGroup,
-    labeledField("Increment", fields.increment),
-    labeledField("Rest (s)", fields.restSeconds),
-    el("button", {
-      class: "danger-link",
-      text: "Remove set",
-      onclick: async () => {
-        await repository.deleteSetTarget(target.id);
-        await renderBlockDetailScreen(root, routineId, location, blockId);
-      },
-    }),
+    el("div", { class: "set-row-header" }, [
+      el("span", { class: "set-label", text: `Set ${target.setNumber}` }),
+      el("button", {
+        class: "danger-link",
+        text: "Remove set",
+        onclick: async () => {
+          await repository.deleteSetTarget(target.id);
+          await renderBlockDetailScreen(root, routineId, location, blockId);
+        },
+      }),
+    ]),
+    el("div", { class: "set-grid" }, [
+      labeledField("Weight", fields.currentWeight),
+      labeledField("Range low", fields.repRangeLow),
+      labeledField("Range high", fields.repRangeHigh),
+      labeledField("Increment", fields.increment),
+      labeledField("Rest (s)", fields.restSeconds),
+    ]),
   ]);
 }
 

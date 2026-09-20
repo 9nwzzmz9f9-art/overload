@@ -82,6 +82,10 @@ export const repository = {
     for (const block of blocks) {
       await repository.deleteRoutineBlock(block.id);
     }
+    // Set targets are per routine now, so they go with it.
+    for (const target of await db.getAll("setTargets")) {
+      if (target.routineId === id) await repository.deleteSetTarget(target.id);
+    }
     await db.delete("routines", id);
   },
   async reorderRoutines(orderedIds) {
@@ -127,11 +131,13 @@ export const repository = {
   },
 
   // --- set targets ---------------------------------------------------
-  async listSetTargetsForExercise(exerciseId, location) {
+  // Targets are per routine: the same exercise in Upper and in Push has
+  // independent weights/progression (user feedback).
+  async listSetTargetsForExercise(exerciseId, location, routineId) {
     const dataLocation = resolveDataLocation(location);
     const all = await db.getAllByIndex("setTargets", "exerciseId", exerciseId);
     return all
-      .filter((t) => t.location === dataLocation)
+      .filter((t) => t.location === dataLocation && t.routineId === routineId)
       .sort((a, b) => a.setNumber - b.setNumber);
   },
   // progressionTriggerReps always mirrors repRangeHigh (user feedback:
@@ -329,10 +335,12 @@ export const repository = {
       for (const exerciseId of [block.exercise1Id, block.exercise2Id].filter(Boolean)) {
         const sourceTargets = await repository.listSetTargetsForExercise(
           exerciseId,
-          fromLocation
+          fromLocation,
+          routineId
         );
         for (const target of sourceTargets) {
           await repository.createSetTarget({
+            routineId,
             exerciseId,
             location: toLocation,
             setNumber: target.setNumber,
@@ -422,7 +430,11 @@ export const repository = {
   async revertProgressionForWorkout(workout) {
     const events = await db.getAllByIndex("progressionEvents", "workoutId", workout.id);
     for (const event of events) {
-      const targets = await repository.listSetTargetsForExercise(event.exerciseId, event.location);
+      const targets = await repository.listSetTargetsForExercise(
+        event.exerciseId,
+        event.location,
+        event.routineId ?? workout.routineId
+      );
       const target = targets.find((t) => t.setNumber === event.setNumber);
       if (target) {
         await repository.updateSetTarget(target.id, { currentWeight: event.oldWeight });
@@ -576,7 +588,7 @@ export const repository = {
     for (const exerciseId of exerciseIds) {
       targetsByExercise.set(
         exerciseId,
-        await repository.listSetTargetsForExercise(exerciseId, location)
+        await repository.listSetTargetsForExercise(exerciseId, location, routineId)
       );
     }
 

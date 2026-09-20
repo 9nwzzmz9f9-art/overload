@@ -1,7 +1,7 @@
 import { el, openModal, clear } from "./dom.js";
 import { repository } from "./repository.js";
 import { exerciseLibrary } from "./exerciseLibrary.js";
-import { EQUIPMENT_CATEGORIES } from "./constants.js";
+import { EQUIPMENT_CATEGORIES, categoryLabel } from "./constants.js";
 
 // Shared search/browse sheet for both pickExercise() (creates or links a
 // real exercise record) and pickExerciseName() (just resolves with a name
@@ -28,7 +28,7 @@ function openSearchSheet({ title, createLabel, onPickMine, onPickLibrary, onUseT
     });
     const categorySelect = el("select", { class: "picker-filter" }, [
       el("option", { value: "", text: "Any equipment" }),
-      ...EQUIPMENT_CATEGORIES.map((c) => el("option", { value: c, text: c })),
+      ...EQUIPMENT_CATEGORIES.map((c) => el("option", { value: c, text: categoryLabel(c) })),
     ]);
     const muscleSelect = el("select", { class: "picker-filter" }, [
       el("option", { value: "", text: "Any muscle" }),

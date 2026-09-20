@@ -244,6 +244,41 @@ select {
   width: 5.5rem;
 }
 
+.block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.block-names {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0;
+  min-height: unset;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-weight: 600;
+}
+
+.block-exercise {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.block-exercise-marker {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 1rem;
+}
+
 /* --- tabs ------------------------------------------------------ */
 
 .tabs {
@@ -385,23 +420,34 @@ select {
 
 .set-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
+  flex-direction: column;
+  gap: 0.5rem;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.6rem;
 }
 
-.set-label {
-  font-weight: 700;
-  min-width: 3.5rem;
+.set-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.range-group {
-  display: flex;
+.set-label {
+  font-weight: 700;
+}
+
+/* 3 columns: Weight / Range low / Range high, then Increment / Rest. */
+.set-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.set-grid input {
+  width: 100%;
+  min-width: 0;
 }
 
 .field {
@@ -527,6 +573,47 @@ select {
   margin-top: 0.5rem;
 }
 
+.plate-stack {
+  display: flex;
+  align-items: center;
+  height: 112px;
+  padding-left: 4px;
+  margin: 0.4rem 0;
+}
+
+.plate-collar {
+  flex: none;
+  width: 10px;
+  height: 34px;
+  background: var(--border);
+  border-radius: 2px 0 0 2px;
+}
+
+.plate-sleeve {
+  flex: 1;
+  height: 16px;
+  min-width: 12px;
+  background: var(--border);
+  margin-left: 2px;
+  border-radius: 0 3px 3px 0;
+}
+
+.plate {
+  flex: 0 1 auto;
+  min-width: 8px;
+  margin-left: 2px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  overflow: hidden;
+}
+
 .plate-breakdown {
   font-size: 1.2rem;
   font-weight: 700;
@@ -638,6 +725,11 @@ select {
   flex-direction: column;
   gap: 0.4rem;
   margin-top: 0.4rem;
+}
+
+.custom-weight-row {
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .override-panel .inline-input-narrow {

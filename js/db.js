@@ -2,7 +2,7 @@
 // module directly — go through repository.js instead.
 
 const DB_NAME = "overload";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 /** @type {Promise<IDBDatabase>|null} */
 let dbPromise = null;
@@ -38,11 +38,25 @@ function openDb() {
       if (!db.objectStoreNames.contains("setTargets")) {
         const setTargets = db.createObjectStore("setTargets", { keyPath: "id" });
         setTargets.createIndex("exerciseId", "exerciseId", { unique: false });
-        setTargets.createIndex(
-          "exerciseLocationSet",
-          ["exerciseId", "location", "setNumber"],
-          { unique: true }
-        );
+      }
+
+      // v3: set targets are per (routine, exercise, location, set) so the
+      // same exercise in two routines keeps independent weights (user
+      // feedback). The old (exercise, location, set) unique index would
+      // forbid that, so it's dropped; records that predate `routineId`
+      // aren't in the new index until migrations.js assigns one.
+      {
+        const setTargets = request.transaction.objectStore("setTargets");
+        if (setTargets.indexNames.contains("exerciseLocationSet")) {
+          setTargets.deleteIndex("exerciseLocationSet");
+        }
+        if (!setTargets.indexNames.contains("routineExerciseLocationSet")) {
+          setTargets.createIndex(
+            "routineExerciseLocationSet",
+            ["routineId", "exerciseId", "location", "setNumber"],
+            { unique: true }
+          );
+        }
       }
 
       if (!db.objectStoreNames.contains("appSettings")) {

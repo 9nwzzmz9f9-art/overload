@@ -14,6 +14,7 @@ export const EQUIPMENT_CATEGORIES = [
   "barbell",
   "dumbbell",
   "machine",
+  "plateLoaded",
   "cable",
   "bodyweight",
   "weightedBodyweight",
@@ -24,11 +25,27 @@ export const EQUIPMENT_CATEGORIES = [
 // matched sets — only after the pair. See sessionPlan.js's `restAfter`.
 export const BLOCK_TYPES = ["single", "alternatingPair", "superset"];
 
+// Display names for the category dropdowns (stored values stay camelCase).
+export const EQUIPMENT_CATEGORY_LABELS = {
+  barbell: "Barbell",
+  dumbbell: "Dumbbell",
+  machine: "Machine (stack)",
+  plateLoaded: "Plate-loaded machine",
+  cable: "Cable",
+  bodyweight: "Bodyweight",
+  weightedBodyweight: "Weighted bodyweight",
+};
+
+export function categoryLabel(category) {
+  return EQUIPMENT_CATEGORY_LABELS[category] ?? category;
+}
+
 export const DEFAULT_INCREMENT_BY_CATEGORY = {
   barbell: 10,
   dumbbell: 5,
   weightedBodyweight: 5,
   machine: 5,
+  plateLoaded: 10, // 5 lb per side
   cable: 5,
   bodyweight: 0,
 };

@@ -147,23 +147,30 @@ export async function renderBlocksScreen(root, routineId, location) {
   root.appendChild(list);
 }
 
+const BLOCK_TYPE_LABELS = {
+  single: "Single",
+  alternatingPair: "Alt. pair",
+  superset: "Superset",
+};
+
 function renderBlockRow(root, routineId, location, block, blocks, index, exerciseById) {
-  const names = [block.exercise1Id, block.exercise2Id]
-    .filter(Boolean)
-    .map((id) => exerciseById.get(id)?.name ?? "?")
-    .join(" / ");
+  const exerciseIds = [block.exercise1Id, block.exercise2Id].filter(Boolean);
+  const isPair = exerciseIds.length > 1;
+
+  // Each exercise gets its own full-width line (a pair used to be
+  // squashed into one wrapped "A / B" string next to the buttons — user
+  // feedback). A/B markers show the order for pairs/supersets.
+  const nameLines = exerciseIds.map((id, i) =>
+    el("span", { class: "block-exercise" }, [
+      isPair ? el("span", { class: "block-exercise-marker", text: i === 0 ? "A" : "B" }) : null,
+      el("span", { text: exerciseById.get(id)?.name ?? "?" }),
+    ])
+  );
 
   const card = el("div", { class: "card" });
   card.appendChild(
-    el("div", { class: "row-card" }, [
-      el(
-        "button",
-        {
-          class: "row-main",
-          onclick: () => navigate(`/routines/${routineId}/${location}/blocks/${block.id}`),
-        },
-        [el("span", { class: "badge", text: block.blockType }), el("strong", { text: names })]
-      ),
+    el("div", { class: "block-header" }, [
+      el("span", { class: "badge", text: BLOCK_TYPE_LABELS[block.blockType] ?? block.blockType }),
       el("div", { class: "row-actions" }, [
         el("button", {
           class: "icon-button",
@@ -200,6 +207,16 @@ function renderBlockRow(root, routineId, location, block, blocks, index, exercis
       ]),
     ])
   );
+  card.appendChild(
+    el(
+      "button",
+      {
+        class: "block-names",
+        onclick: () => navigate(`/routines/${routineId}/${location}/blocks/${block.id}`),
+      },
+      nameLines
+    )
+  );
 
   // Expand-in-place set/weight preview (user feedback) — reps aren't
   // shown here, they're only meaningful for the progression rules, not
@@ -229,7 +246,7 @@ function renderBlockRow(root, routineId, location, block, blocks, index, exercis
 async function renderPreviewContents(preview, block, exerciseById) {
   for (const exerciseId of [block.exercise1Id, block.exercise2Id].filter(Boolean)) {
     const exercise = exerciseById.get(exerciseId);
-    const targets = await repository.listSetTargetsForExercise(exerciseId, block.location);
+    const targets = await repository.listSetTargetsForExercise(exerciseId, block.location, block.routineId);
     const weights = targets
       .sort((a, b) => a.setNumber - b.setNumber)
       .map((t) => (t.currentWeight < 0 ? `${Math.abs(t.currentWeight)} assist` : `${t.currentWeight}`))

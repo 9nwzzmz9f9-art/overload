@@ -17,6 +17,9 @@
 // already been unlocked once doesn't need a fresh user gesture, so this
 // recovers on its own.
 
+// Was 0.2; +50% per user feedback (0.3). Applies to every beep/tick/chime.
+const PEAK_GAIN = 0.3;
+
 let audioContext = null;
 
 function getContext() {
@@ -57,7 +60,7 @@ export async function playBeep({ frequency = 880, durationMs = 180 } = {}) {
     const gain = ctx.createGain();
     oscillator.type = "sine";
     oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.setValueAtTime(PEAK_GAIN, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
     oscillator.connect(gain);
     gain.connect(ctx.destination);

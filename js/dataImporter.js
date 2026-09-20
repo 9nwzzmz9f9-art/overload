@@ -5,6 +5,7 @@
 // rules, and "restore my backup" is the actual need.
 
 import { repository } from "./repository.js";
+import { runMigrations } from "./migrations.js";
 
 /**
  * Validate and parse an export file. Throws with a readable message if
@@ -41,5 +42,7 @@ export function describeCounts(counts) {
 export async function importReplacingAll(jsonText) {
   const { parsed } = parseImport(jsonText);
   await repository.replaceAllData(parsed.data);
+  // Older backups predate per-routine set targets — bring them forward.
+  await runMigrations();
   return parsed;
 }

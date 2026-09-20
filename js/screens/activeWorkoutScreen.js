@@ -12,6 +12,7 @@ import { pickExerciseName } from "../exercisePicker.js";
 import { findResumeIndex, warmupKey } from "../workoutProgress.js";
 import { remainingMs, isResting, formatRemaining } from "../restTimer.js";
 import { calculatePlateLoading } from "../plateCalculator.js";
+import { plateStyle, expandPlates } from "../plateStyle.js";
 import { applyPositionSwaps } from "../exerciseSwap.js";
 import { getLocationLabels, labelFor } from "../locationLabels.js";
 import { unlockAudio, playBeep, playDoneChime, playCountdownTick } from "../audioAlert.js";
@@ -612,7 +613,22 @@ async function renderWorkingSetCard(
   // Plate calculator: only meaningful for plate-loaded barbell work, and
   // only when this location has a plate profile to compute against.
   if (exercise?.equipmentCategory === "barbell" && plateProfile) {
-    card.appendChild(renderPlateCalculator(plateProfile, weightInput));
+    card.appendChild(
+      renderPlateCalculator(plateProfile, weightInput, {
+        startWeight: plateProfile.barWeight,
+        startLabel: `${plateProfile.barWeight} lb bar`,
+      })
+    );
+  } else if (exercise?.equipmentCategory === "plateLoaded" && plateProfile) {
+    // Plate-loaded machines: same plates, but the "bar" is the empty
+    // machine's own weight, which varies per exercise (0 = plates only).
+    const startWeight = exercise.startWeight ?? 0;
+    card.appendChild(
+      renderPlateCalculator(plateProfile, weightInput, {
+        startWeight,
+        startLabel: startWeight > 0 ? `${startWeight} lb empty machine` : "Plates only",
+      })
+    );
   }
 
   // Finishing the item: start the rest timer (unless a superset's first
@@ -745,7 +761,26 @@ async function renderWorkingSetCard(
   root.appendChild(card);
 }
 
-function renderPlateCalculator(plateProfile, weightInput) {
+// One side of the bar: collar, then each plate colored/sized by weight
+// (heaviest closest to the collar), then the sleeve.
+function renderPlateStack(perSide) {
+  const stack = el("div", { class: "plate-stack", "aria-hidden": "true" }, [
+    el("div", { class: "plate-collar" }),
+  ]);
+  for (const weight of expandPlates(perSide)) {
+    const style = plateStyle(weight);
+    const plate = el("div", { class: "plate", text: String(weight) });
+    plate.style.width = `${style.width}px`;
+    plate.style.height = `${style.height}px`;
+    plate.style.background = style.color;
+    plate.style.color = style.text;
+    stack.appendChild(plate);
+  }
+  stack.appendChild(el("div", { class: "plate-sleeve" }));
+  return stack;
+}
+
+function renderPlateCalculator(plateProfile, weightInput, { startWeight, startLabel }) {
   const body = el("div", { class: "plate-calc-body" });
   body.hidden = true;
   const toggle = el("button", { class: "link-button", text: "Show plate loading ▸" });
@@ -756,14 +791,15 @@ function renderPlateCalculator(plateProfile, weightInput) {
     if (!Number.isFinite(target)) return;
     const { perSide, exact, remainderPerSide } = calculatePlateLoading(
       target,
-      plateProfile.barWeight,
+      startWeight,
       plateProfile.plateDenominations
     );
-    body.appendChild(el("p", { class: "muted", text: `${plateProfile.barWeight} lb bar — per side:` }));
+    body.appendChild(el("p", { class: "muted", text: `${startLabel} — per side:` }));
+    body.appendChild(renderPlateStack(perSide));
     body.appendChild(
       el("p", {
-        class: "plate-breakdown",
-        text: perSide.length ? perSide.map((p) => `${p.weight}×${p.count}`).join("  +  ") : "Bar only",
+        class: "muted",
+        text: perSide.length ? perSide.map((p) => `${p.count} × ${p.weight}`).join("  +  ") : "Bar only",
       })
     );
     if (!exact) {

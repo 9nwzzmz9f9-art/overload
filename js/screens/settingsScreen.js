@@ -14,6 +14,7 @@ const CEILING_FIELDS = [
   ["barbellCeiling", "Barbell"],
   ["dumbbellCeiling", "Dumbbell"],
   ["machineCeiling", "Machine"],
+  ["plateLoadedCeiling", "Plate-loaded machine"],
   ["cableCeiling", "Cable"],
 ];
 
@@ -213,6 +214,7 @@ async function renderPlateProfiles(root, location) {
             barbellCeiling: null,
             dumbbellCeiling: null,
             machineCeiling: null,
+            plateLoadedCeiling: null,
             cableCeiling: null,
           });
           renderSettingsScreen(root, location);

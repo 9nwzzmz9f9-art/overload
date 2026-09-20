@@ -27,6 +27,7 @@ const CEILING_FIELD_BY_CATEGORY = {
   barbell: "barbellCeiling",
   dumbbell: "dumbbellCeiling",
   machine: "machineCeiling",
+  plateLoaded: "plateLoadedCeiling",
   cable: "cableCeiling",
 };
 
@@ -105,7 +106,7 @@ export async function renderCompletionScreen(root, workoutId) {
   const targetsCache = new Map();
   async function targetsForExercise(exerciseId) {
     if (!targetsCache.has(exerciseId)) {
-      targetsCache.set(exerciseId, await repository.listSetTargetsForExercise(exerciseId, workout.location));
+      targetsCache.set(exerciseId, await repository.listSetTargetsForExercise(exerciseId, workout.location, workout.routineId));
     }
     return targetsCache.get(exerciseId);
   }
@@ -221,6 +222,7 @@ async function finishWorkout(workout, rows) {
 
     if (resolution.reason) {
       await repository.createProgressionEvent({
+        routineId: workout.routineId,
         exerciseId: loggedSet.exerciseId,
         location: workout.location,
         setNumber: loggedSet.setNumber,
@@ -414,8 +416,12 @@ function buildGenericOverride(row, panel, applyResolution) {
     value: row.resolution ? row.resolution.newWeight : row.setTarget.currentWeight,
     class: "inline-input inline-input-narrow",
   });
-  row2.appendChild(customInput);
-  row2.appendChild(
+  // The weight box and its button sit together on their own line — the
+  // input used to land beside "Progress/Hold anyway", which read as if it
+  // belonged to that button (user feedback).
+  const customRow = el("div", { class: "completion-actions custom-weight-row" });
+  customRow.appendChild(customInput);
+  customRow.appendChild(
     el("button", {
       class: "secondary-action",
       text: "Set custom weight",
@@ -427,7 +433,8 @@ function buildGenericOverride(row, panel, applyResolution) {
     })
   );
 
-  panel.appendChild(row2);
+  if (row2.children.length > 0) panel.appendChild(row2);
+  panel.appendChild(customRow);
 }
 
 function decisionLabel(decision) {
