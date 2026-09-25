@@ -394,6 +394,9 @@ export const repository = {
       // exerciseSwap.js. Applied in order each render, so re-swapping the
       // same pair cancels out.
       positionSwaps: [],
+      // "Do a different block first" (user feedback): [movedBlockId,
+      // beforeBlockId] pairs — see blockMove.js. Applied in order.
+      blockMoves: [],
       completedWarmupKeys: [],
       // A 5-minute cardio warm-up offered at the start of every workout
       // (user feedback, not in the original spec) — same
@@ -536,6 +539,13 @@ export const repository = {
     };
     await db.put("loggedSets", record);
     return record;
+  },
+  async updateLoggedSet(id, changes) {
+    const existing = await db.get("loggedSets", id);
+    if (!existing) throw new Error(`Logged set ${id} not found`);
+    const updated = { ...existing, ...changes };
+    await db.put("loggedSets", updated);
+    return updated;
   },
   async listLoggedSetsForWorkout(workoutId) {
     return db.getAllByIndex("loggedSets", "workoutId", workoutId);

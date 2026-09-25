@@ -10,10 +10,11 @@ import { repository } from "../repository.js";
 import { navigate } from "../router.js";
 import { pickExerciseName } from "../exercisePicker.js";
 import { findResumeIndex, warmupKey } from "../workoutProgress.js";
-import { remainingMs, isResting, formatRemaining } from "../restTimer.js";
+import { remainingMs, isResting, formatRemaining, dueCountdownAlert } from "../restTimer.js";
 import { calculatePlateLoading } from "../plateCalculator.js";
 import { plateStyle, expandPlates } from "../plateStyle.js";
 import { applyPositionSwaps } from "../exerciseSwap.js";
+import { applyBlockMoves, isBlockUnstarted, switchableBlocks } from "../blockMove.js";
 import { getLocationLabels, labelFor } from "../locationLabels.js";
 import { unlockAudio, playBeep, playDoneChime, playCountdownTick } from "../audioAlert.js";
 
@@ -93,7 +94,14 @@ export async function renderActiveWorkoutScreen(root, workoutId) {
   // deriving anything else, so resume position, "Set N of M", and the
   // displayed item all agree on the swapped arrangement.
   const doneKeys = new Set(loggedSets.map((s) => `${s.exerciseId}:${s.setNumber}`));
-  const displayPlan = applyPositionSwaps(plan, workout.positionSwaps ?? [], doneKeys);
+  // "Switch exercise" now moves a whole block (user feedback) — see
+  // blockMove.js. positionSwaps is legacy (an older per-exercise trade)
+  // but still honored so an in-progress workout doesn't change under you.
+  const displayPlan = applyBlockMoves(
+    applyPositionSwaps(plan, workout.positionSwaps ?? [], doneKeys),
+    workout.blockMoves ?? [],
+    { doneKeys, completedWarmupKeys: new Set(workout.completedWarmupKeys ?? []) }
+  );
 
   const totalSetsByExercise = new Map();
   for (const item of displayPlan) {
@@ -132,10 +140,13 @@ export async function renderActiveWorkoutScreen(root, workoutId) {
       item,
       exerciseById,
       totalSetsByExercise,
-      plateProfile,
-      displayPlan,
-      doneKeys
+      plateProfile
     );
+    // Its own smaller block beneath the set card (user feedback), and only
+    // before this block has been started.
+    if (isBlockUnstarted(displayPlan, item.blockId, { doneKeys })) {
+      root.appendChild(renderSwitchCard(root, workout, item, exerciseById, displayPlan, doneKeys));
+    }
   }
 
   renderFooterActions(root, workout, item);
@@ -196,7 +207,7 @@ function renderCardioWarmup(root, workout) {
     return;
   }
 
-  const label = el("p", { class: "rest-countdown" });
+  const label = el("p", { class: "rest-countdown-big" });
   const skipBtn = el("button", { class: "secondary-action", text: "Skip remaining" });
   root.appendChild(
     el("section", { class: "card workout-card" }, [
@@ -330,29 +341,18 @@ function fireCountdownTick() {
   playCountdownTick();
 }
 
-// Tracks which alert thresholds have already fired for one countdown, so
-// each fires exactly once regardless of how often tick() runs. Shared by
-// the cardio warm-up and rest timers (user feedback: a 1-minute heads-up
-// alongside the existing 30-second one, plus a 3-2-1 countdown into the
-// finish — the "done" alert itself stays owned by each tick()'s own
-// ms <= 0 branch, since that's also where the timer's state transition
-// happens).
+// Wraps restTimer.js's dueCountdownAlert for one countdown: each
+// threshold fires exactly once, and a timer noticed late plays a single
+// most-urgent alert instead of a burst of stale ones. The "done" alert
+// itself stays owned by each tick()'s own ms <= 0 branch, since that's
+// also where the timer's state transition happens.
 function createCountdownAlerter() {
   const fired = new Set();
   return function checkAlerts(ms) {
-    const seconds = Math.ceil(ms / 1000);
-    if (seconds <= 3 && !fired.has(`t${seconds}`)) {
-      fired.add(`t${seconds}`);
-      fireCountdownTick();
-    }
-    if (ms <= 30000 && !fired.has("t30")) {
-      fired.add("t30");
-      fireTimerAlert("30 seconds left.");
-    }
-    if (ms <= 60000 && !fired.has("t60")) {
-      fired.add("t60");
-      fireTimerAlert("1 minute left.");
-    }
+    const due = dueCountdownAlert(fired, ms);
+    if (due === "tick") fireCountdownTick();
+    else if (due === "warn30") fireTimerAlert("30 seconds left.");
+    else if (due === "warn60") fireTimerAlert("1 minute left.");
   };
 }
 
@@ -382,53 +382,43 @@ function renderWarmupCard(root, workout, item, exerciseById) {
   );
 }
 
-// "Switch exercise" (user feedback): on the first set of an exercise,
-// offers either (a) trading positions with another exercise still ahead
-// in today's workout — "the chest press is occupied, let me do this one
-// now and come back to chest press where this one would've been" — or
-// (b) swapping the exercise's identity entirely for the rest of the
-// session (the pre-existing "swap this exercise entirely" behavior,
-// consolidated here rather than living as a separate footer button).
-function renderSwitchExerciseButton(root, workout, item, exerciseById, displayPlan, doneKeys) {
-  return el("button", {
-    class: "link-button",
-    text: "Switch exercise",
-    onclick: async () => {
-      unlockAudio();
-      const action = await chooseSwitchAction();
-      if (action === "reorder") {
-        const options = remainingOtherExercises(displayPlan, item.exerciseId, doneKeys, exerciseById);
-        if (options.length === 0) {
-          alert("No other exercises remain in this workout to switch with.");
-          return;
+// "Switch exercise" (user feedback), shown in its own small card beneath
+// the set card before a block is started. Two ways out: (a) do another
+// whole block first — its sets run in their planned order (pairs
+// interleaved) and then this block resumes — or (b) swap this exercise's
+// identity entirely for the rest of the session (the older "swap for
+// today" behavior, consolidated here).
+function renderSwitchCard(root, workout, item, exerciseById, displayPlan, doneKeys) {
+  return el("section", { class: "card workout-card-compact switch-card" }, [
+    el("button", {
+      class: "secondary-action",
+      text: "Switch exercise",
+      onclick: async () => {
+        unlockAudio();
+        const action = await chooseSwitchAction();
+        if (action === "block") {
+          const options = switchableBlocks(displayPlan, item.blockId, { doneKeys });
+          if (options.length === 0) {
+            alert("No other blocks remain in this workout to switch to.");
+            return;
+          }
+          const chosenId = await chooseBlock(options, exerciseById);
+          if (!chosenId) return;
+          await repository.updateWorkout(workout.id, {
+            blockMoves: [...(workout.blockMoves ?? []), [chosenId, item.blockId]],
+          });
+          renderActiveWorkoutScreen(root, workout.id);
+        } else if (action === "substitute") {
+          const picked = await pickExerciseName();
+          if (!picked) return;
+          await repository.updateWorkout(workout.id, {
+            substitutedExercises: { ...(workout.substitutedExercises ?? {}), [item.exerciseId]: picked },
+          });
+          renderActiveWorkoutScreen(root, workout.id);
         }
-        const chosenId = await chooseOtherExercise(options);
-        if (!chosenId) return;
-        await repository.updateWorkout(workout.id, {
-          positionSwaps: [...(workout.positionSwaps ?? []), [item.exerciseId, chosenId]],
-        });
-        renderActiveWorkoutScreen(root, workout.id);
-      } else if (action === "substitute") {
-        const picked = await pickExerciseName();
-        if (!picked) return;
-        await repository.updateWorkout(workout.id, {
-          substitutedExercises: { ...(workout.substitutedExercises ?? {}), [item.exerciseId]: picked },
-        });
-        renderActiveWorkoutScreen(root, workout.id);
-      }
-    },
-  });
-}
-
-function remainingOtherExercises(displayPlan, currentExerciseId, doneKeys, exerciseById) {
-  const ids = new Set();
-  for (const planItem of displayPlan) {
-    if (planItem.kind !== "workingSet") continue;
-    if (planItem.exerciseId === currentExerciseId) continue;
-    if (doneKeys.has(`${planItem.exerciseId}:${planItem.setNumber}`)) continue;
-    ids.add(planItem.exerciseId);
-  }
-  return [...ids].map((id) => ({ id, name: exerciseById.get(id)?.name ?? "Exercise" }));
+      },
+    }),
+  ]);
 }
 
 function chooseSwitchAction() {
@@ -438,10 +428,10 @@ function chooseSwitchAction() {
       el("div", { class: "picker-header" }, [el("h2", { class: "modal-title", text: "Switch exercise" })]),
       el("button", {
         class: "picker-row",
-        text: "Switch with another exercise in this workout",
+        text: "Do a different block first",
         onclick: () => {
           close();
-          resolve("reorder");
+          resolve("block");
         },
       }),
       el("button", {
@@ -458,20 +448,34 @@ function chooseSwitchAction() {
   });
 }
 
-function chooseOtherExercise(options) {
+const BLOCK_TYPE_TAGS = { alternatingPair: "alternating", superset: "superset" };
+
+// One row per remaining block; a pair/superset lists both exercises on
+// their own lines so it's clear what "this block" is.
+function chooseBlock(options, exerciseById) {
   return new Promise((resolve) => {
     let close;
     const sheet = el("div", { class: "picker" }, [
-      el("div", { class: "picker-header" }, [el("h2", { class: "modal-title", text: "Switch with…" })]),
+      el("div", { class: "picker-header" }, [el("h2", { class: "modal-title", text: "Do first…" })]),
       ...options.map((opt) =>
-        el("button", {
-          class: "picker-row",
-          text: opt.name,
-          onclick: () => {
-            close();
-            resolve(opt.id);
+        el(
+          "button",
+          {
+            class: "picker-row block-choice",
+            onclick: () => {
+              close();
+              resolve(opt.blockId);
+            },
           },
-        })
+          [
+            ...opt.exerciseIds.map((id) =>
+              el("span", { class: "block-choice-name", text: exerciseById.get(id)?.name ?? "Exercise" })
+            ),
+            BLOCK_TYPE_TAGS[opt.blockType]
+              ? el("span", { class: "muted block-choice-tag", text: BLOCK_TYPE_TAGS[opt.blockType] })
+              : null,
+          ]
+        )
       ),
       el("button", { class: "picker-close", text: "Cancel", onclick: () => { close(); resolve(null); } }),
     ]);
@@ -485,9 +489,7 @@ async function renderWorkingSetCard(
   item,
   exerciseById,
   totalSetsByExercise,
-  plateProfile,
-  displayPlan,
-  doneKeys
+  plateProfile
 ) {
   const exercise = exerciseById.get(item.exerciseId);
   const setTarget = await repository.getSetTarget(item.setTargetId);
@@ -502,12 +504,6 @@ async function renderWorkingSetCard(
   const card = el("section", { class: "card workout-card" });
   card.appendChild(el("p", { class: "subtitle", text: `Set ${item.setNumber} of ${totalSets}` }));
   card.appendChild(el("h1", { text: exercise?.name ?? "Exercise" }));
-  // Only on the first set of an exercise (user feedback) — switching
-  // mid-way through an exercise you've already started logging is a
-  // different, more disruptive thing than deciding up front.
-  if (item.setNumber === 1) {
-    card.appendChild(renderSwitchExerciseButton(root, workout, item, exerciseById, displayPlan, doneKeys));
-  }
   card.appendChild(
     el("p", {
       class: "target-display",
@@ -825,25 +821,9 @@ function renderFooterActions(root, workout, item) {
   const actions = el("div", { class: "workout-footer-actions" });
 
   if (item.kind === "workingSet") {
-    // Distinct from "Skip this set" — do this later resurfaces the set
-    // once everything else is done (SPEC.md-adjacent user feedback: "the
-    // equipment I need is occupied, I'll come back to it").
     actions.appendChild(
       el("button", {
-        class: "danger-link",
-        text: "Do this later",
-        onclick: async () => {
-          const key = `${item.exerciseId}:${item.setNumber}`;
-          await repository.updateWorkout(workout.id, {
-            deferredSetKeys: [...(workout.deferredSetKeys ?? []), key],
-          });
-          renderActiveWorkoutScreen(root, workout.id);
-        },
-      })
-    );
-    actions.appendChild(
-      el("button", {
-        class: "danger-link",
+        class: "footer-action",
         text: "Skip this set",
         onclick: async () => {
           const key = `${item.exerciseId}:${item.setNumber}`;
@@ -858,7 +838,7 @@ function renderFooterActions(root, workout, item) {
 
   actions.appendChild(
     el("button", {
-      class: "danger-link",
+      class: "footer-action",
       text: "Skip this exercise for today",
       onclick: async () => {
         if (!confirm("Skip this exercise for the rest of today's workout?")) return;
@@ -872,7 +852,7 @@ function renderFooterActions(root, workout, item) {
 
   actions.appendChild(
     el("button", {
-      class: "danger-link",
+      class: "footer-action footer-action-abandon",
       text: "Abandon workout",
       onclick: async () => {
         if (!confirm("Abandon this workout? It's marked abandoned and won't affect your rotation.")) {

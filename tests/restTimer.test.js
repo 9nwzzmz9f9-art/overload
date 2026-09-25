@@ -30,3 +30,31 @@ test("formatRemaining pads seconds and rounds up", () => {
   assert.equal(formatRemaining(500), "0:01"); // rounds up, never flashes 0:00 early
   assert.equal(formatRemaining(0), "0:00");
 });
+
+import { dueCountdownAlert } from "../js/restTimer.js";
+
+test("dueCountdownAlert fires each threshold once as a timer counts down", () => {
+  const fired = new Set();
+  const seen = [];
+  for (let ms = 90000; ms > 0; ms -= 250) {
+    const alert = dueCountdownAlert(fired, ms);
+    if (alert) seen.push(alert);
+  }
+  assert.deepEqual(seen, ["warn60", "warn30", "tick", "tick", "tick"]);
+});
+
+test("dueCountdownAlert coalesces a late-noticed timer into one most-urgent alert", () => {
+  // Screen was off; timer is noticed with 20s left — one 30s alert, not 30s + 60s.
+  const fired = new Set();
+  assert.equal(dueCountdownAlert(fired, 20000), "warn30");
+  assert.equal(dueCountdownAlert(fired, 19750), null);
+  // Noticed with 2s left having never fired anything: just the tick.
+  const late = new Set();
+  assert.equal(dueCountdownAlert(late, 1900), "tick");
+  assert.equal(dueCountdownAlert(late, 1700), null);
+});
+
+test("dueCountdownAlert never fires at or below zero (the done alert is the caller's)", () => {
+  assert.equal(dueCountdownAlert(new Set(), 0), null);
+  assert.equal(dueCountdownAlert(new Set(), -500), null);
+});

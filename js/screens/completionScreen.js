@@ -249,17 +249,78 @@ async function finishWorkout(workout, rows) {
 // re-render, which would blow away every other row's in-memory choice
 // before Finish is pressed.
 function buildRowView(row, onRowChanged) {
-  const { loggedSet, exercise, decision, drops } = row;
+  const { loggedSet, exercise, drops } = row;
 
   const card = el("div", { class: "card row-card completion-row" });
+  const setLine = el("p", { class: "muted" });
+  function renderSetLine() {
+    setLine.textContent = loggedSet.wasSubstituted
+      ? `Logged as "${loggedSet.substitutedExerciseName}": ${formatWeight(loggedSet.weightUsed)} × ${loggedSet.reps}`
+      : `${formatWeight(loggedSet.weightUsed)} × ${loggedSet.reps}`;
+  }
+  renderSetLine();
+
+  // Fix a fat-fingered set (user feedback): edits the logged weight/reps
+  // in place, then re-runs the engine on the corrected numbers and drops
+  // any earlier choice for this row (it was made against the old numbers).
+  const editor = el("div", { class: "completion-actions set-editor" });
+  editor.hidden = true;
+  const weightEdit = el("input", {
+    type: "number",
+    step: "0.5",
+    class: "inline-input inline-input-narrow",
+    "aria-label": "Weight",
+  });
+  const repsEdit = el("input", {
+    type: "number",
+    step: "1",
+    min: "0",
+    class: "inline-input inline-input-narrow",
+    "aria-label": "Reps",
+  });
+  const editToggle = el("button", { class: "link-button", text: "Edit set" });
+  function closeEditor() {
+    editor.hidden = true;
+    editToggle.textContent = "Edit set";
+  }
+  editToggle.addEventListener("click", () => {
+    if (editor.hidden) {
+      weightEdit.value = loggedSet.weightUsed;
+      repsEdit.value = loggedSet.reps;
+      editor.hidden = false;
+      editToggle.textContent = "Cancel edit";
+    } else {
+      closeEditor();
+    }
+  });
+  editor.appendChild(weightEdit);
+  editor.appendChild(el("span", { class: "muted", text: "lb ×" }));
+  editor.appendChild(repsEdit);
+  editor.appendChild(
+    el("button", {
+      class: "secondary-action",
+      text: "Save",
+      onclick: async () => {
+        const weightUsed = parseFloat(weightEdit.value);
+        const reps = parseInt(repsEdit.value, 10);
+        if (!Number.isFinite(weightUsed) || !Number.isFinite(reps) || reps < 0) return;
+        await repository.updateLoggedSet(loggedSet.id, { weightUsed, reps });
+        loggedSet.weightUsed = weightUsed;
+        loggedSet.reps = reps;
+        row.decision = evaluateLoggedSet(loggedSet, row.setTarget, { ceiling: row.ceiling });
+        row.resolution = autoResolution(row.decision);
+        renderSetLine();
+        closeEditor();
+        onRowChanged();
+      },
+    })
+  );
+
   const info = el("div", {}, [
     el("p", { text: `${exercise?.name ?? "Exercise"} — Set ${loggedSet.setNumber}` }),
-    el("p", {
-      class: "muted",
-      text: loggedSet.wasSubstituted
-        ? `Logged as "${loggedSet.substitutedExerciseName}": ${formatWeight(loggedSet.weightUsed)} × ${loggedSet.reps}`
-        : `${formatWeight(loggedSet.weightUsed)} × ${loggedSet.reps}`,
-    }),
+    setLine,
+    editToggle,
+    editor,
   ]);
   for (const drop of drops ?? []) {
     info.appendChild(
@@ -302,7 +363,7 @@ function buildRowView(row, onRowChanged) {
     }
 
     clear(panel);
-    if (FLAGGED_KINDS.has(decision.kind)) {
+    if (FLAGGED_KINDS.has(row.decision.kind)) {
       buildFlaggedChoices(row, panel, applyResolution);
     }
     buildGenericOverride(row, panel, applyResolution);

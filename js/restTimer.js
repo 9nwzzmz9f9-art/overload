@@ -25,3 +25,35 @@ export function formatRemaining(ms) {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
+
+/**
+ * Which countdown alert (if any) should sound right now. `fired` is the
+ * caller's per-timer Set, mutated so each threshold fires at most once.
+ *
+ * Every threshold already crossed is marked fired, but only the single
+ * most urgent one is returned — so a timer noticed late (the tab was
+ * throttled or the screen was off) plays one alert instead of a burst of
+ * stale ones. Priority: 3-2-1 tick > 30s > 1 minute. The final "done"
+ * alert is not handled here (it belongs to the caller's ms <= 0 branch,
+ * where the timer's state transition also happens).
+ *
+ * @returns {"tick"|"warn30"|"warn60"|null}
+ */
+export function dueCountdownAlert(fired, ms) {
+  if (ms <= 0) return null;
+  const seconds = Math.ceil(ms / 1000);
+  const crossed = [];
+  if (seconds <= 3 && !fired.has(`t${seconds}`)) {
+    fired.add(`t${seconds}`);
+    crossed.push("tick");
+  }
+  if (ms <= 30000 && !fired.has("t30")) {
+    fired.add("t30");
+    crossed.push("warn30");
+  }
+  if (ms <= 60000 && !fired.has("t60")) {
+    fired.add("t60");
+    crossed.push("warn60");
+  }
+  return crossed.find((k) => k === "tick") ?? crossed.find((k) => k === "warn30") ?? crossed[0] ?? null;
+}

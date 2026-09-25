@@ -374,20 +374,29 @@ backgrounding too). Then, per plan item:
   end timestamp and compute remaining — never a ticking in-memory
   counter. See §6.1 below for exactly what "survive" means on this
   platform, including the 1-minute/30-second/3-2-1 alert cadence.
-- **Do this later** vs **Skip**: skipping a set or exercise drops it for
-  the rest of the workout; "do this later" (user feedback) instead
-  resurfaces it once everything else in the plan is done — not
-  interchangeable, and not what "switch exercise" (below) is for.
-- **Switch exercise** (user feedback, replacing an earlier
-  free-standing "swap this exercise for today" action): on the first set
-  of an exercise only, opens a choice between (a) trading this
-  exercise's remaining positions with another exercise still ahead in
-  today's workout — "the equipment for this one is occupied, let me do
-  that one now and come back to this one where that one would've been" —
-  matched pairwise by remaining occurrence order
-  (`exerciseSwap.js`), or (b) swapping the exercise's identity entirely
-  for the rest of the session (the substitution behavior above). Swiping
-  isn't implemented — tap to skip. Confirmation dialog on back-navigation.
+- **Skip** drops a set or exercise for the rest of the workout. (The
+  earlier "do this later" action was removed — "switch exercise" below
+  covers that need.)
+- **Switch exercise** (user feedback): lives in its own small card
+  beneath the set card, shown only before the current block has been
+  started (no working set of it logged yet). It opens a choice between
+  (a) **do a different block first** — the chosen block's remaining
+  items (warm-ups and sets, pairs/supersets interleaved in their planned
+  order) run right now, then the current block resumes and everything
+  else keeps its order (`blockMove.js`, stored as `blockMoves` pairs on
+  the workout), or (b) swapping the exercise's identity entirely for the
+  rest of the session (the substitution behavior above). Skip set, skip
+  exercise and abandon are separate full-width buttons beneath it.
+  Swiping isn't implemented — tap to skip. Confirmation dialog on
+  back-navigation.
+- Timer alerts (`audioAlert.js`): a non-running AudioContext (including
+  iOS's "interrupted" state) is resumed or rebuilt before every alert,
+  the sound is declared a short "transient" audio session where
+  supported, a timer noticed late plays one coalesced alert
+  (`restTimer.js` `dueCountdownAlert`), and Settings has a Sound check
+  (test chime, audio state, recent-alert log) for diagnosing misses.
+- The rest (and cardio warm-up) countdown is sized to the screen width so
+  it reads from a distance.
 
 **Workout Complete** — the progression summary and below-range decisions
 described in §5.

@@ -17,6 +17,8 @@
  * @property {string} exerciseId
  * @property {number} [setNumber] - working sets only; matches setTargets.setNumber
  * @property {string} [setTargetId] - working sets only
+ * @property {string} [blockId] - source block's id; unlike orderIndex it is
+ *   always unique, so it's what block-level moves key on
  * @property {number} blockIndex - source block's orderIndex, for grouping/UI
  * @property {"single"|"alternatingPair"|"superset"} blockType
  * @property {number} legIndex - 0 for a single block or a pair's exercise1,
@@ -107,6 +109,7 @@ function warmupItem(block, exerciseId, legIndex) {
   return {
     kind: "warmup",
     exerciseId,
+    blockId: block.id,
     blockIndex: block.orderIndex,
     blockType: block.blockType,
     legIndex,
@@ -120,6 +123,7 @@ function workingSetItem(block, exerciseId, legIndex, target, restAfter) {
     exerciseId,
     setNumber: target.setNumber,
     setTargetId: target.id,
+    blockId: block.id,
     blockIndex: block.orderIndex,
     blockType: block.blockType,
     legIndex,

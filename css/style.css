@@ -537,14 +537,22 @@ select {
 .rest-dominant {
   border-color: var(--accent);
   text-align: center;
-  padding: 2.5rem 1.5rem;
+  padding: 2rem 0.5rem;
 }
 
-.rest-countdown-big {
-  font-size: 4rem;
+/* Sized to the screen width (user feedback: readable from across the
+   room / on the gym floor) — "10:00" is the widest it gets, so the vw
+   figure is what keeps that from overflowing a narrow phone. */
+/* ".card p" (specificity 0,1,1) was silently overriding this class's
+   font-size, which is why the timer never actually looked big — the
+   ".card" prefix wins the tie. */
+.card .rest-countdown-big {
+  font-size: min(29vw, 10rem);
+  line-height: 1;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  margin: 0.5rem 0 1.25rem;
+  white-space: nowrap;
+  margin: 1rem 0 1.5rem;
   color: var(--accent);
 }
 
@@ -666,9 +674,42 @@ select {
 .workout-footer-actions {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
+  gap: 0.5rem;
   margin-top: 0.75rem;
+}
+
+/* Skip / skip exercise / abandon: each its own full-width tap target,
+   clearly separate from the set card and the switch card above. */
+.footer-action {
+  width: 100%;
+  background: var(--panel);
+  color: #e0654f;
+  border: 1px solid var(--border);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.footer-action-abandon {
+  margin-top: 0.4rem;
+}
+
+.switch-card .secondary-action {
+  margin: 0;
+}
+
+.block-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.block-choice-name {
+  font-weight: 600;
+}
+
+.block-choice-tag {
+  font-size: 0.8rem;
 }
 
 /* --- completion screen --------------------------------------------- */
@@ -747,4 +788,8 @@ select {
 .workout-manage-panel .secondary-action {
   width: auto;
   margin: 0;
+}
+
+.workout-card .rest-countdown-big {
+  text-align: center;
 }

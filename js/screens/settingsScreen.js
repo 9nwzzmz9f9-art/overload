@@ -9,6 +9,7 @@ import { LOCATIONS } from "../constants.js";
 import { buildJsonExport, buildLoggedSetsCsv } from "../dataExporter.js";
 import { parseImport, describeCounts, importReplacingAll } from "../dataImporter.js";
 import { getLocationLabels, labelFor } from "../locationLabels.js";
+import { unlockAudio, playDoneChime, getAudioStatus, getAudioLog } from "../audioAlert.js";
 
 const CEILING_FIELDS = [
   ["barbellCeiling", "Barbell"],
@@ -33,6 +34,7 @@ export async function renderSettingsScreen(root, location = LOCATIONS[0]) {
 
   await renderDefaults(root);
   await renderLocationNames(root);
+  renderSoundCheck(root);
   await renderPlateProfiles(root, location);
   renderExport(root);
 }
@@ -67,6 +69,61 @@ async function renderLocationNames(root) {
         ...inputs.map(([id, input]) => labeledField(`"${id}" is called`, input)),
       ]
     )
+  );
+}
+
+// Sound check: a test button plus what the audio system is actually doing,
+// so an alert that didn't sound can be diagnosed (see audioAlert.js).
+function renderSoundCheck(root) {
+  const statusList = el("div", { class: "muted sound-status" });
+  const logList = el("div", { class: "muted sound-log" });
+
+  function refresh() {
+    clear(statusList);
+    const status = getAudioStatus();
+    for (const line of [
+      `Audio: ${status.supported ? status.state : "not supported"}`,
+      `Silent-switch override: ${status.sessionType}`,
+      `Running as installed app: ${status.standalone ? "yes" : "no"}`,
+    ]) {
+      statusList.appendChild(el("p", { text: line }));
+    }
+    clear(logList);
+    const log = getAudioLog().slice(-8).reverse();
+    if (log.length === 0) {
+      logList.appendChild(el("p", { text: "No alerts recorded yet." }));
+    }
+    for (const entry of log) {
+      const time = new Date(entry.t).toLocaleTimeString();
+      logList.appendChild(
+        el("p", {
+          text: `${time} — ${entry.kind}: ${entry.result} (audio ${entry.state})${entry.detail ? ` — ${entry.detail}` : ""}`,
+        })
+      );
+    }
+  }
+
+  refresh();
+  root.appendChild(
+    el("section", { class: "card" }, [
+      el("h2", { text: "Sound check" }),
+      el("p", {
+        class: "muted",
+        text: "Timer chimes can't play with the screen locked or the app backgrounded, and iOS may mute them if the ringer switch is off.",
+      }),
+      el("button", {
+        class: "secondary-action",
+        text: "Play test chime",
+        onclick: async () => {
+          unlockAudio();
+          await playDoneChime();
+          setTimeout(refresh, 400);
+        },
+      }),
+      statusList,
+      el("h3", { text: "Recent alerts" }),
+      logList,
+    ])
   );
 }
 
