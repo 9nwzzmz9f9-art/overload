@@ -29,8 +29,13 @@
 // context is unlocked well before a timer callback (which is NOT a user
 // gesture) needs to beep.
 
-// Was 0.2; +50% per user feedback (0.3). Applies to every beep/tick/chime.
-const PEAK_GAIN = 0.3;
+// 0.2 originally -> 0.3 (+50%) -> 0.5 (user feedback: still getting
+// drowned out by music). 0.5 is about as loud as a single sine
+// oscillator goes straight to destination before it risks clipping
+// (full scale is 1.0) — a further bump needs a louder waveform (more
+// harmonics cut through a mix better than raw volume), not just more
+// gain here. Applies to every beep/tick/chime.
+const PEAK_GAIN = 0.5;
 const RESUME_TIMEOUT_MS = 400;
 const LOG_KEY = "overload.audioLog";
 const LOG_MAX = 20;

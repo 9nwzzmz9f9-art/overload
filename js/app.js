@@ -10,6 +10,7 @@ import { renderBlocksScreen } from "./screens/blocksScreen.js";
 import { renderBlockDetailScreen } from "./screens/blockDetailScreen.js";
 import { renderActiveWorkoutScreen } from "./screens/activeWorkoutScreen.js";
 import { renderCompletionScreen } from "./screens/completionScreen.js";
+import { renderViewWorkoutScreen } from "./screens/viewWorkoutScreen.js";
 import { renderSettingsScreen } from "./screens/settingsScreen.js";
 
 async function registerServiceWorker() {
@@ -43,6 +44,7 @@ function registerRoutes(screenRoot) {
   route("/", () => renderHomeScreen(screenRoot));
   route("/workout/:workoutId", ({ workoutId }) => renderActiveWorkoutScreen(screenRoot, workoutId));
   route("/workout/:workoutId/complete", ({ workoutId }) => renderCompletionScreen(screenRoot, workoutId));
+  route("/workout/:workoutId/view", ({ workoutId }) => renderViewWorkoutScreen(screenRoot, workoutId));
   route("/programs", () => renderProgramsScreen(screenRoot));
   route("/settings", () => renderSettingsScreen(screenRoot));
   route("/exercises", () => renderExercisesScreen(screenRoot));

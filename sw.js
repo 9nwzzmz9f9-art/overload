@@ -1,4 +1,4 @@
-const CACHE_NAME = "overload-shell-v28";
+const CACHE_NAME = "overload-shell-v30";
 
 const SHELL_FILES = [
   "./",
@@ -36,6 +36,7 @@ const SHELL_FILES = [
   "./js/screens/blockDetailScreen.js",
   "./js/screens/activeWorkoutScreen.js",
   "./js/screens/completionScreen.js",
+  "./js/screens/viewWorkoutScreen.js",
   "./js/screens/settingsScreen.js",
   "./js/data/exercise-library.json",
   "./icons/icon-192.png",

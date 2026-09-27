@@ -279,14 +279,15 @@ which is the trigger) / *Swap exercise*. Silently
 prescribing a weight that doesn't physically exist is the failure this
 prevents.
 
-**Substitutions:** if I swap an exercise mid-workout, log it against the
+**Substitutions:** if I swap an exercise mid-workout via Switch exercise
+-> "Swap this exercise entirely" (§6, below), log it against the
 original slot with `wasSubstituted = true` and **skip progression** for
-that slot this session. The per-set "Log as a different exercise" toggle
-and the whole-exercise "Switch exercise" flow (§6, below) both resolve
-to a name via the same search/browse sheet as the exercise picker
-(§6.2) — neither ever creates or links a real exercise record, only a
-name string for `substitutedExerciseName` (user feedback: originally
-free-text-only).
+that slot this session. Resolves to a name via the same search/browse
+sheet as the exercise picker (§6.2) — never creates or links a real
+exercise record, only a name string for `substitutedExerciseName`.
+(The earlier per-set "Log as a different exercise" toggle was removed —
+Switch exercise covers a one-off swap just as well and having both read
+as redundant.)
 
 **Reopening/deleting a workout** (user feedback, added post-launch): a
 `complete` workout can be reopened for review, or deleted outright, from
@@ -389,6 +390,14 @@ backgrounding too). Then, per plan item:
   exercise and abandon are separate full-width buttons beneath it.
   Swiping isn't implemented — tap to skip. Confirmation dialog on
   back-navigation.
+- "Last: <weight> × <reps>" on a working set is scoped to (exercise,
+  location, routine) — `getLastLoggedSetForSlot` takes `routineId` — so
+  it never shows a different routine's most recent performance of a
+  shared exercise (§10).
+- "Manage" on a complete or abandoned workout (Home) offers **View
+  workout**: the same read-only rundown as the completion screen's
+  numbers, with no edit/reopen/delete controls, at
+  `/workout/:workoutId/view` (`viewWorkoutScreen.js`).
 - Timer alerts (`audioAlert.js`): a non-running AudioContext (including
   iOS's "interrupted" state) is resumed or rebuilt before every alert,
   the sound is declared a short "transient" audio session where

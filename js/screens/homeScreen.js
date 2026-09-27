@@ -174,6 +174,15 @@ async function renderWorkoutRow(root, workout, routines, labels) {
     toggle.textContent = panel.hidden ? "Manage ▸" : "Manage ▾";
   });
 
+  if (workout.status === "complete" || workout.status === "abandoned") {
+    panel.appendChild(
+      el("button", {
+        class: "secondary-action",
+        text: "View workout",
+        onclick: () => navigate(`/workout/${workout.id}/view`),
+      })
+    );
+  }
   if (workout.status === "complete") {
     panel.appendChild(
       el("button", {

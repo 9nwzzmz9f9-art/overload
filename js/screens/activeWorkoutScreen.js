@@ -497,6 +497,7 @@ async function renderWorkingSetCard(
     item.exerciseId,
     item.setNumber,
     workout.location,
+    workout.routineId,
     workout.id
   );
   const totalSets = totalSetsByExercise.get(item.exerciseId) ?? item.setNumber;
@@ -547,16 +548,13 @@ async function renderWorkingSetCard(
     ])
   );
 
-  // Substitution (§5 "Substitutions"): summons the same search/browse
-  // sheet as the Program Editor's exercise picker (my exercises + the
-  // library) to pick a name — never creates or links a real exercise
-  // record, just annotates the logged set(s).
-  //
-  // A workout-level swap ("Swap this exercise for today", footer
-  // actions) takes priority and applies silently to every remaining set
-  // of this exercise — no per-set toggle needed once it's set.
+  // Substitution (§5 "Substitutions"): a whole-exercise swap made via
+  // Switch exercise -> "Swap this exercise entirely" (user feedback —
+  // the old per-set "Log as a different exercise" toggle was redundant
+  // with it and is removed). Applies silently to every remaining set of
+  // this exercise for the rest of the session.
   const workoutSwap = workout.substitutedExercises?.[item.exerciseId] ?? null;
-  let substitutedName = workoutSwap;
+  const substitutedName = workoutSwap;
 
   if (workoutSwap) {
     card.appendChild(
@@ -574,36 +572,6 @@ async function renderWorkingSetCard(
         }),
       ])
     );
-  } else {
-    const subLine = el("p", { class: "muted" });
-    const subToggle = el("button", { class: "link-button", text: "Log as a different exercise" });
-    function refreshSubLine() {
-      clear(subLine);
-      if (!substitutedName) return;
-      subLine.appendChild(el("span", { text: `Substituting: ${substitutedName}  ` }));
-      subLine.appendChild(
-        el("button", {
-          class: "link-button",
-          text: "Clear",
-          onclick: () => {
-            substitutedName = null;
-            subToggle.textContent = "Log as a different exercise";
-            refreshSubLine();
-          },
-        })
-      );
-    }
-    subToggle.addEventListener("click", async () => {
-      unlockAudio();
-      const picked = await pickExerciseName();
-      if (picked) {
-        substitutedName = picked;
-        subToggle.textContent = "Change substitution";
-        refreshSubLine();
-      }
-    });
-    card.appendChild(subToggle);
-    card.appendChild(subLine);
   }
 
   // Plate calculator: only meaningful for plate-loaded barbell work, and

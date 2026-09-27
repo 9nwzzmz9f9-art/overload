@@ -559,7 +559,11 @@ export const repository = {
   // then keep whichever most-recent one belongs to a workout at the same
   // location. Drops are excluded — they're not "the set," just an
   // extension of it.
-  async getLastLoggedSetForSlot(exerciseId, setNumber, location, excludeWorkoutId) {
+  // Scoped to routine as well as location — set targets are per routine
+  // (§10), so "last time I did this" must mean last time in *this*
+  // routine, not the last time anywhere this exercise appeared (e.g. the
+  // same exercise also sitting in a different routine at this location).
+  async getLastLoggedSetForSlot(exerciseId, setNumber, location, routineId, excludeWorkoutId) {
     // "home" and "other" are the same data family (see
     // resolveDataLocation) — a workout at either counts as "last session"
     // for the other, since they always share the same setTargets.
@@ -573,6 +577,7 @@ export const repository = {
     for (const loggedSet of candidates) {
       const workout = await db.get("workouts", loggedSet.workoutId);
       if (!workout || resolveDataLocation(workout.location) !== family) continue;
+      if (workout.routineId !== routineId) continue;
       if (!best || (workout.createdAt ?? 0) > (best.workout.createdAt ?? 0)) {
         best = { loggedSet, workout };
       }
