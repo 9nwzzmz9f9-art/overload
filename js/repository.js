@@ -3,6 +3,8 @@
 
 import { db, newId } from "./db.js";
 import { buildSessionPlan } from "./sessionPlan.js";
+import { findPersonalRecords } from "./records.js";
+import { computeTotalWeightLifted } from "./workoutStats.js";
 
 // "other" (user feedback — a logging-only location, see
 // constants.js's LOGGING_LOCATIONS) has no program data of its own: it
@@ -14,6 +16,11 @@ import { buildSessionPlan } from "./sessionPlan.js";
 // getPlateProfileForLocation all alias through this.
 function resolveDataLocation(location) {
   return location === "other" ? "home" : location;
+}
+
+/** Personal-record family: one exercise in one routine at one location (see records.js). */
+export function prFamilyKey(routineId, exerciseId, location) {
+  return `${routineId}|${exerciseId}|${resolveDataLocation(location)}`;
 }
 
 // Every object store, in a stable order — used by the export/import
@@ -418,6 +425,44 @@ export const repository = {
     const updated = { ...existing, ...changes };
     await db.put("workouts", updated);
     return updated;
+  },
+  async listAllWorkouts() {
+    return db.getAll("workouts");
+  },
+  // workoutId -> total weight lifted, for the Home screen's week summary.
+  async getVolumeByWorkoutId() {
+    const byWorkout = new Map();
+    for (const s of await db.getAll("loggedSets")) {
+      if (!byWorkout.has(s.workoutId)) byWorkout.set(s.workoutId, []);
+      byWorkout.get(s.workoutId).push(s);
+    }
+    return new Map([...byWorkout].map(([id, sets]) => [id, computeTotalWeightLifted(sets)]));
+  },
+  // Personal records across everything logged (see records.js). Returns
+  // the ids of PR sets plus each family's sets, so callers can also ask
+  // "what's the best at this weight?" without a second read.
+  async getPersonalRecords() {
+    const [workouts, loggedSets] = await Promise.all([db.getAll("workouts"), db.getAll("loggedSets")]);
+    const workoutById = new Map(workouts.map((w) => [w.id, w]));
+    const candidates = [];
+    const familySets = new Map();
+    for (const s of loggedSets) {
+      if (s.dropOf || s.wasSubstituted) continue;
+      const workout = workoutById.get(s.workoutId);
+      if (!workout) continue;
+      const key = prFamilyKey(workout.routineId, s.exerciseId, workout.location);
+      const candidate = {
+        id: s.id,
+        key,
+        weightUsed: s.weightUsed,
+        reps: s.reps,
+        completedAt: s.completedAt ?? 0,
+      };
+      candidates.push(candidate);
+      if (!familySets.has(key)) familySets.set(key, []);
+      familySets.get(key).push(candidate);
+    }
+    return { prSetIds: findPersonalRecords(candidates), familySets };
   },
   async listRecentWorkouts(limit = 5) {
     const all = await db.getAll("workouts");

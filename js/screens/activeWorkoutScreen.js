@@ -6,10 +6,11 @@
 // only records what happened; the completion flow (phase 6) evaluates it.
 
 import { el, clear, labeledField, openModal } from "../dom.js";
-import { repository } from "../repository.js";
+import { repository, prFamilyKey } from "../repository.js";
 import { navigate } from "../router.js";
 import { pickExerciseName } from "../exercisePicker.js";
-import { findResumeIndex, warmupKey } from "../workoutProgress.js";
+import { findResumeIndex, warmupKey, computeSetProgress } from "../workoutProgress.js";
+import { bestRepsAtWeight } from "../records.js";
 import { remainingMs, isResting, formatRemaining, dueCountdownAlert } from "../restTimer.js";
 import { calculatePlateLoading } from "../plateCalculator.js";
 import { plateStyle, expandPlates } from "../plateStyle.js";
@@ -20,6 +21,11 @@ import { keepScreenAwake } from "../wakeLock.js";
 import { unlockAudio, playBeep, playDoneChime, playCountdownTick } from "../audioAlert.js";
 
 const DEFAULT_STARTING_REPS = 6;
+
+// One-shot feedback handed from "a set was just logged" to the render that
+// follows it: whether to pop the progress bar and what PR banner to show.
+// Consumed (cleared) by the next render so it never repeats on a re-render.
+let pendingFeedback = null;
 const CARDIO_WARMUP_SECONDS = 5 * 60;
 
 // Countdown interval/listener bookkeeping, shared by the cardio warm-up
@@ -127,6 +133,22 @@ export async function renderActiveWorkoutScreen(root, workoutId) {
     return;
   }
 
+  // Only fresh feedback counts — a log whose render never happened
+  // shouldn't pop on some later visit.
+  const feedback = pendingFeedback && Date.now() - pendingFeedback.at < 15000 ? pendingFeedback : null;
+  pendingFeedback = null;
+  if (feedback?.pr) root.appendChild(renderPrToast(feedback.pr));
+  root.appendChild(
+    renderSetProgress(
+      computeSetProgress(displayPlan, {
+        loggedSets,
+        skippedSetKeys: workout.skippedSetKeys ?? [],
+        skippedExerciseIds: workout.skippedExerciseIds ?? [],
+      }),
+      Boolean(feedback)
+    )
+  );
+
   const item = displayPlan[resumeIndex];
   if (item.kind === "warmup") {
     renderWarmupCard(root, workout, item, exerciseById);
@@ -152,6 +174,33 @@ export async function renderActiveWorkoutScreen(root, workoutId) {
   }
 
   renderFooterActions(root, workout, item, exerciseById);
+}
+
+// Segmented bar, one segment per working set (warm-ups aren't sets).
+function renderSetProgress({ total, done }, popLast) {
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+  const segments = el("div", { class: "set-progress-segments", "aria-hidden": "true" });
+  for (let i = 0; i < total; i++) {
+    let cls = "";
+    if (i < done) cls = "on";
+    else if (i === done) cls = "current";
+    if (popLast && i === done - 1) cls += " just-done";
+    segments.appendChild(el("i", { class: cls.trim() }));
+  }
+  return el("div", { class: "set-progress" }, [
+    el("div", { class: "set-progress-label" }, [
+      el("span", { text: `${done} of ${total} sets` }),
+      el("span", { text: `${percent}%` }),
+    ]),
+    segments,
+  ]);
+}
+
+function renderPrToast({ headline, detail }) {
+  return el("div", { class: "pr-toast", role: "status" }, [
+    el("span", { class: "pr-toast-star", text: "★", "aria-hidden": "true" }),
+    el("div", {}, [el("span", { text: headline }), el("small", { text: detail })]),
+  ]);
 }
 
 async function renderHeader(root, workout) {
@@ -503,6 +552,9 @@ async function renderWorkingSetCard(
     workout.id
   );
   const totalSets = totalSetsByExercise.get(item.exerciseId) ?? item.setNumber;
+  const { familySets } = await repository.getPersonalRecords();
+  const familyKey = prFamilyKey(workout.routineId, item.exerciseId, workout.location);
+  const family = familySets.get(familyKey) ?? [];
 
   const card = el("section", { class: "card workout-card" });
   card.appendChild(el("p", { class: "subtitle", text: `Set ${item.setNumber} of ${totalSets}` }));
@@ -513,13 +565,16 @@ async function renderWorkingSetCard(
       text: `${formatWeight(setTarget.currentWeight)} × ${setTarget.repRangeLow}–${setTarget.repRangeHigh}`,
     })
   );
+  const prHint = el("span", { class: "pr-hint" });
   card.appendChild(
-    el("p", {
-      class: "muted",
-      text: last
-        ? `Last: ${formatWeight(last.loggedSet.weightUsed)} × ${last.loggedSet.reps}`
-        : "Last: — (first time at this slot)",
-    })
+    el("p", { class: "muted" }, [
+      el("span", {
+        text: last
+          ? `Last: ${formatWeight(last.loggedSet.weightUsed)} × ${last.loggedSet.reps}`
+          : "Last: — (first time at this slot)",
+      }),
+      prHint,
+    ])
   );
 
   const weightInput = el("input", {
@@ -528,6 +583,15 @@ async function renderWorkingSetCard(
     value: setTarget.currentWeight,
     class: "big-input",
   });
+  // "PR to beat" follows whatever weight is typed: the most reps ever
+  // logged at exactly that weight in this routine, if that weight's been
+  // used before (see records.js).
+  function refreshPrHint() {
+    const best = bestRepsAtWeight(family, parseFloat(weightInput.value));
+    prHint.textContent = best === null ? "" : ` · PR to beat: ${best} reps`;
+  }
+  weightInput.addEventListener("input", refreshPrHint);
+  refreshPrHint();
   card.appendChild(labeledField("Weight used", weightInput));
 
   // Starts at a flat 6 rather than the slot's repRangeLow (deviates from
@@ -713,7 +777,7 @@ async function renderWorkingSetCard(
 
   async function logCurrentEntry() {
     const weightUsed = parseFloat(weightInput.value);
-    return repository.createLoggedSet({
+    const logged = await repository.createLoggedSet({
       workoutId: workout.id,
       exerciseId: item.exerciseId,
       setNumber: item.setNumber,
@@ -722,6 +786,8 @@ async function renderWorkingSetCard(
       wasSubstituted: substitutedName !== null,
       substitutedExerciseName: substitutedName,
     });
+    pendingFeedback = { pr: await describePersonalRecord(logged, workout), at: Date.now() };
+    return logged;
   }
 
   root.appendChild(card);
@@ -729,6 +795,24 @@ async function renderWorkingSetCard(
 
 // One side of the bar: collar, then each plate colored/sized by weight
 // (heaviest closest to the collar), then the sleeve.
+// If the set just logged is a personal record, the banner text for it.
+async function describePersonalRecord(logged, workout) {
+  if (logged.wasSubstituted) return null;
+  const { prSetIds, familySets } = await repository.getPersonalRecords();
+  if (!prSetIds.has(logged.id)) return null;
+  const earlier = (familySets.get(prFamilyKey(workout.routineId, logged.exerciseId, workout.location)) ?? []).filter(
+    (s) => s.id !== logged.id
+  );
+  const before = bestRepsAtWeight(earlier, logged.weightUsed);
+  return {
+    headline: `New PR — ${formatWeight(logged.weightUsed)} × ${logged.reps}`,
+    detail:
+      before === null
+        ? "Heaviest you've done in this routine"
+        : `Previous best at ${formatWeight(logged.weightUsed)}: ${before} reps`,
+  };
+}
+
 function renderPlateStack(perSide) {
   const stack = el("div", { class: "plate-stack", "aria-hidden": "true" }, [
     el("div", { class: "plate-collar" }),

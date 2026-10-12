@@ -77,3 +77,24 @@ export function findResumeIndex(plan, progress = {}) {
 export function warmupKey(item) {
   return `${item.exerciseId}:${item.blockIndex}:${item.legIndex}`;
 }
+
+/**
+ * How far through the workout the lifter is, counted in working sets
+ * (warm-ups aren't sets). A set counts as done once it's logged or
+ * skipped, whether on its own or because its whole exercise was skipped.
+ * @returns {{total: number, done: number}}
+ */
+export function computeSetProgress(plan, { loggedSets = [], skippedSetKeys = [], skippedExerciseIds = [] } = {}) {
+  const logged = new Set(loggedSets.map((s) => `${s.exerciseId}:${s.setNumber}`));
+  const skippedSets = new Set(skippedSetKeys);
+  const skippedExercises = new Set(skippedExerciseIds);
+  let total = 0;
+  let done = 0;
+  for (const item of plan) {
+    if (item.kind !== "workingSet") continue;
+    total++;
+    const key = `${item.exerciseId}:${item.setNumber}`;
+    if (logged.has(key) || skippedSets.has(key) || skippedExercises.has(item.exerciseId)) done++;
+  }
+  return { total, done };
+}

@@ -79,10 +79,11 @@ export async function renderCompletionScreen(root, workoutId) {
     el("p", { class: "subtitle", text: `${routine?.name ?? "Workout"} — ${workout.date}` })
   );
 
-  const [loggedSets, exercises, plateProfile] = await Promise.all([
+  const [loggedSets, exercises, plateProfile, records] = await Promise.all([
     repository.listLoggedSetsForWorkout(workout.id),
     repository.listExercises({ includeArchived: true }),
     repository.getPlateProfileForLocation(workout.location),
+    repository.getPersonalRecords(),
   ]);
   const exerciseById = new Map(exercises.map((e) => [e.id, e]));
 
@@ -145,6 +146,7 @@ export async function renderCompletionScreen(root, workoutId) {
       decision,
       resolution: autoResolution(decision),
       drops: dropsByParentId.get(loggedSet.id) ?? [],
+      isPR: records.prSetIds.has(loggedSet.id),
     });
   }
 
@@ -310,14 +312,20 @@ function buildRowView(row, onRowChanged) {
         row.decision = evaluateLoggedSet(loggedSet, row.setTarget, { ceiling: row.ceiling });
         row.resolution = autoResolution(row.decision);
         renderSetLine();
+        row.isPR = (await repository.getPersonalRecords()).prSetIds.has(loggedSet.id);
+        prBadge.hidden = !row.isPR;
         closeEditor();
         onRowChanged();
       },
     })
   );
 
+  // ★ PR badge (records.js). Re-evaluated after an edit, since changing
+  // reps or weight can gain or lose the record.
+  const prBadge = el("span", { class: "badge badge-pr", text: "★ PR" });
+  prBadge.hidden = !row.isPR;
   const info = el("div", {}, [
-    el("p", { text: `${exercise?.name ?? "Exercise"} — Set ${loggedSet.setNumber}` }),
+    el("p", {}, [el("span", { text: `${exercise?.name ?? "Exercise"} — Set ${loggedSet.setNumber} ` }), prBadge]),
     setLine,
     editToggle,
     editor,

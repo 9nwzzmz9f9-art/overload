@@ -9,7 +9,8 @@
   --border: #e1dcd2;
   --text: #201d18;
   --muted: #767063;
-  --accent: #f59e42;
+  --accent: #14a08a; /* teal (user choice; was amber #f59e42) */
+  --accent-ink: #04201b; /* text on top of --accent */
 }
 
 /* Any element toggled via `el.hidden = true/false` must actually hide —
@@ -95,7 +96,7 @@ button {
   border-radius: 12px;
   border: none;
   background: var(--accent);
-  color: #1a1200;
+  color: var(--accent-ink);
   min-height: 48px;
   min-width: 48px;
 }
@@ -298,7 +299,7 @@ select {
 
 .tab-active {
   background: var(--accent);
-  color: #1a1200;
+  color: var(--accent-ink);
   border-color: var(--accent);
 }
 
@@ -792,4 +793,198 @@ select {
 
 .workout-card .rest-countdown-big {
   text-align: center;
+}
+
+/* --- home: this week + next up ------------------------------------- */
+
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.week-dot {
+  width: 100%;
+  max-width: 2.4rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1.5px dashed var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.week-dot-done {
+  background: var(--accent);
+  border: 1.5px solid var(--accent);
+  color: var(--accent-ink);
+}
+
+.week-dot-today {
+  border: 2px solid var(--accent);
+  color: var(--text);
+}
+
+.week-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.week-big {
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.week-delta-up {
+  color: #2f7d4f;
+  font-weight: 700;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.week-delta-down {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.next-preview {
+  list-style: none;
+  margin: 0.5rem 0 0.75rem;
+  padding: 0;
+}
+
+.next-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.next-preview li span:last-child {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- personal records + workout progress ---------------------------- */
+
+.badge-pr {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.set-progress {
+  margin: 0.25rem 0 0.6rem;
+}
+
+.set-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.set-progress-segments {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 3px;
+  margin-top: 0.35rem;
+}
+
+.set-progress-segments i {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.set-progress-segments i.on {
+  background: var(--accent);
+}
+
+.set-progress-segments i.current {
+  background: var(--accent);
+  opacity: 0.45;
+}
+
+/* The set you just finished pops once, so logging feels acknowledged. */
+.set-progress-segments i.just-done {
+  animation: seg-pop 0.5s ease-out;
+}
+
+@keyframes seg-pop {
+  0% { transform: scaleY(1); filter: brightness(1.6); }
+  40% { transform: scaleY(2.2); filter: brightness(1.4); }
+  100% { transform: scaleY(1); filter: brightness(1); }
+}
+
+.pr-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  font-weight: 700;
+  animation: toast-in 0.35s ease-out;
+}
+
+.pr-toast-star {
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+
+.pr-toast small {
+  display: block;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+@keyframes toast-in {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.pr-hint {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .set-progress-segments i.just-done,
+  .pr-toast {
+    animation: none;
+  }
+}
+
+.badge-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
 }

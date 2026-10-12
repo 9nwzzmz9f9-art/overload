@@ -5,7 +5,7 @@ regenerating. Not part of the app's runtime.
 from PIL import Image, ImageDraw
 
 BG = (17, 19, 24)       # near-black ground
-ACCENT = (245, 158, 66)  # warm amber accent
+ACCENT = (20, 160, 138)  # teal accent (matches --accent in css/style.css)
 
 
 def draw_barbell(size: int) -> Image.Image:

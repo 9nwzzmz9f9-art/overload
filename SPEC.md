@@ -408,8 +408,11 @@ backgrounding too). Then, per plan item:
   default on): the live workout screen holds a Screen Wake Lock so the
   phone doesn't lock mid-rest — a locked page can't play timer chimes.
   Released on leaving the screen; re-requested when the page becomes
-  visible again (the browser drops it when hidden). Best-effort; status
-  shows in Settings -> Sound check.
+  visible again (the browser drops it when hidden). If the API is
+  missing or refused (it was in Brave on iOS), a tiny silent looping
+  video (no audio track) is played instead — the classic "NoSleep"
+  trick — started on the first tap of the workout. Best-effort; status
+  and failure reasons show in Settings -> Sound check.
 - The rest (and cardio warm-up) countdown is sized to the screen width so
   it reads from a distance.
 
@@ -658,3 +661,29 @@ diagram. Each such exercise has an optional `startWeight` (the empty
 machine's carriage/sled weight, default 0 = the logged weight is plates
 only); the diagram subtracts it and splits the rest across two sides. It
 assumes symmetric loading from the location's plate profile.
+
+## 12. Home dashboard, progress and personal records
+
+- **Accent color** is teal (`--accent: #14a08a`, text on it `--accent-ink`),
+  changed from amber by user choice; the PWA icons use the same teal
+  (`icons/generate_icons.py`).
+- **Personal records** (`records.js`): scoped to one (routine, exercise,
+  location), in logged order. A set is a PR when it strictly beats
+  everything before it — more reps at the same weight, or a heavier weight
+  than any earlier set. The first set ever for a family is never a PR; drop
+  sets and substituted logs are excluded. Shown as a banner right after
+  logging, a "PR to beat: N reps" hint under "Last" (follows the weight
+  typed), a "★ PR" badge on the review and view screens (re-evaluated when
+  a set is edited), and an "N PRs" badge on Home's recent workouts.
+- **Workout progress bar**: one segment per working set (warm-ups don't
+  count; a skipped set counts as done), with the set just logged popping
+  once. Respects reduced-motion.
+- **Home**: the Next up card previews the first three exercises and their
+  weights at the chosen location; **This week** (Monday-start) shows one
+  dot per day trained marked with the routine's initial, workouts and
+  weight moved, change vs last week, and a six-week volume trend
+  (`weekStats.js`). Finished workouts only (complete or awaiting
+  progression).
+- New workouts store the **local** calendar date (`localDateString`); they
+  previously stored the UTC date, so an evening workout could land on the
+  next day. Existing workouts keep the date they were saved with.

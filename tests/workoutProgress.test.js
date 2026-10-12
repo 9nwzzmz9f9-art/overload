@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { findResumeIndex, warmupKey } from "../js/workoutProgress.js";
+import { computeSetProgress, findResumeIndex, warmupKey } from "../js/workoutProgress.js";
 import { buildSessionPlan } from "../js/sessionPlan.js";
 
 function makeTarget(exerciseId, setNumber) {
@@ -131,4 +131,23 @@ test("once everything is logged, the resume index is past the end of the plan", 
 
 test("an empty plan resumes at index 0, which already equals its length", () => {
   assert.equal(findResumeIndex([], {}), 0);
+});
+
+test("computeSetProgress counts logged and skipped working sets, not warm-ups", () => {
+  const plan = [
+    { kind: "warmup", exerciseId: "a" },
+    { kind: "workingSet", exerciseId: "a", setNumber: 1 },
+    { kind: "workingSet", exerciseId: "a", setNumber: 2 },
+    { kind: "workingSet", exerciseId: "b", setNumber: 1 },
+    { kind: "workingSet", exerciseId: "b", setNumber: 2 },
+  ];
+  assert.deepEqual(computeSetProgress(plan), { total: 4, done: 0 });
+  assert.deepEqual(
+    computeSetProgress(plan, {
+      loggedSets: [{ exerciseId: "a", setNumber: 1 }],
+      skippedSetKeys: ["a:2"],
+      skippedExerciseIds: ["b"],
+    }),
+    { total: 4, done: 4 }
+  );
 });

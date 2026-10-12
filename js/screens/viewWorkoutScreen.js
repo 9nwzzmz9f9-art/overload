@@ -31,9 +31,10 @@ export async function renderViewWorkoutScreen(root, workoutId) {
     el("p", { class: "subtitle", text: `${routine?.name ?? "Workout"} — ${workout.date}` })
   );
 
-  const [loggedSets, exercises] = await Promise.all([
+  const [loggedSets, exercises, records] = await Promise.all([
     repository.listLoggedSetsForWorkout(workout.id),
     repository.listExercises({ includeArchived: true }),
+    repository.getPersonalRecords(),
   ]);
   const exerciseById = new Map(exercises.map((e) => [e.id, e]));
 
@@ -62,7 +63,10 @@ export async function renderViewWorkoutScreen(root, workoutId) {
     const exercise = exerciseById.get(loggedSet.exerciseId);
     const card = el("div", { class: "card row-card" });
     const lines = [
-      el("p", { text: `${exercise?.name ?? "Exercise"} — Set ${loggedSet.setNumber}` }),
+      el("p", {}, [
+        el("span", { text: `${exercise?.name ?? "Exercise"} — Set ${loggedSet.setNumber} ` }),
+        records.prSetIds.has(loggedSet.id) ? el("span", { class: "badge badge-pr", text: "★ PR" }) : null,
+      ]),
       el("p", {
         class: "muted",
         text: loggedSet.wasSubstituted
