@@ -10,6 +10,7 @@ import { buildJsonExport, buildLoggedSetsCsv } from "../dataExporter.js";
 import { parseImport, describeCounts, importReplacingAll } from "../dataImporter.js";
 import { getLocationLabels, labelFor } from "../locationLabels.js";
 import { unlockAudio, playDoneChime, getAudioStatus, getAudioLog } from "../audioAlert.js";
+import { wakeLockSupported, getWakeLockStatus } from "../wakeLock.js";
 
 const CEILING_FIELDS = [
   ["barbellCeiling", "Barbell"],
@@ -85,6 +86,7 @@ function renderSoundCheck(root) {
       `Audio: ${status.supported ? status.state : "not supported"}`,
       `Silent-switch override: ${status.sessionType}`,
       `Running as installed app: ${status.standalone ? "yes" : "no"}`,
+      `Screen stay-awake: ${getWakeLockStatus()}`,
     ]) {
       statusList.appendChild(el("p", { text: line }));
     }
@@ -209,6 +211,11 @@ function renderImportControl() {
 async function renderDefaults(root) {
   const settings = await repository.getAppSettings();
 
+  const awakeInput = el("input", { type: "checkbox", id: "keep-awake", ...(settings.keepScreenAwake !== false ? { checked: "checked" } : {}) });
+  awakeInput.addEventListener("change", async () => {
+    await repository.updateAppSettings({ keepScreenAwake: awakeInput.checked });
+  });
+
   const restInput = el("input", {
     type: "number",
     step: "5",
@@ -229,6 +236,16 @@ async function renderDefaults(root) {
       el("p", {
         class: "muted",
         text: "Applies to newly created sets only — existing sets keep their own rest value.",
+      }),
+      el("label", { class: "checkbox-label" }, [
+        awakeInput,
+        el("span", { text: " Keep the screen on during a workout" }),
+      ]),
+      el("p", {
+        class: "muted",
+        text: wakeLockSupported()
+          ? "Lets timer chimes sound while you rest — a locked screen can't play them. Uses a little more battery."
+          : "Not supported by this browser, so the screen may still lock mid-workout.",
       }),
     ])
   );

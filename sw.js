@@ -1,4 +1,4 @@
-const CACHE_NAME = "overload-shell-v30";
+const CACHE_NAME = "overload-shell-v32";
 
 const SHELL_FILES = [
   "./",
@@ -15,6 +15,7 @@ const SHELL_FILES = [
   "./js/restTimer.js",
   "./js/workoutProgress.js",
   "./js/audioAlert.js",
+  "./js/wakeLock.js",
   "./js/workoutStats.js",
   "./js/migrations.js",
   "./js/dataExporter.js",

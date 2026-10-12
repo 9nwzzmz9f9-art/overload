@@ -16,6 +16,7 @@ import { plateStyle, expandPlates } from "../plateStyle.js";
 import { applyPositionSwaps } from "../exerciseSwap.js";
 import { applyBlockMoves, isBlockUnstarted, switchableBlocks } from "../blockMove.js";
 import { getLocationLabels, labelFor } from "../locationLabels.js";
+import { keepScreenAwake } from "../wakeLock.js";
 import { unlockAudio, playBeep, playDoneChime, playCountdownTick } from "../audioAlert.js";
 
 const DEFAULT_STARTING_REPS = 6;
@@ -54,6 +55,7 @@ export async function renderActiveWorkoutScreen(root, workoutId) {
   }
 
   await renderHeader(root, workout);
+  keepScreenAwake(); // best-effort; see wakeLock.js
 
   if (!workout.cardioWarmupDone) {
     renderCardioWarmup(root, workout);
@@ -149,7 +151,7 @@ export async function renderActiveWorkoutScreen(root, workoutId) {
     }
   }
 
-  renderFooterActions(root, workout, item);
+  renderFooterActions(root, workout, item, exerciseById);
 }
 
 async function renderHeader(root, workout) {
@@ -785,7 +787,8 @@ function renderPlateCalculator(plateProfile, weightInput, { startWeight, startLa
   return el("div", { class: "plate-calc" }, [toggle, body]);
 }
 
-function renderFooterActions(root, workout, item) {
+function renderFooterActions(root, workout, item, exerciseById) {
+  const exerciseName = exerciseById.get(item.exerciseId)?.name ?? "this exercise";
   const actions = el("div", { class: "workout-footer-actions" });
 
   if (item.kind === "workingSet") {
@@ -794,6 +797,9 @@ function renderFooterActions(root, workout, item) {
         class: "footer-action",
         text: "Skip this set",
         onclick: async () => {
+          // Confirm first (user feedback: tapped by accident two days in
+          // a row and lost a set) — same as the exercise-level skip below.
+          if (!confirm(`Skip set ${item.setNumber} of ${exerciseName}? It won't be logged.`)) return;
           const key = `${item.exerciseId}:${item.setNumber}`;
           await repository.updateWorkout(workout.id, {
             skippedSetKeys: [...(workout.skippedSetKeys ?? []), key],
@@ -809,7 +815,7 @@ function renderFooterActions(root, workout, item) {
       class: "footer-action",
       text: "Skip this exercise for today",
       onclick: async () => {
-        if (!confirm("Skip this exercise for the rest of today's workout?")) return;
+        if (!confirm(`Skip ${exerciseName} for the rest of today's workout?`)) return;
         await repository.updateWorkout(workout.id, {
           skippedExerciseIds: [...(workout.skippedExerciseIds ?? []), item.exerciseId],
         });

@@ -404,6 +404,12 @@ backgrounding too). Then, per plan item:
   supported, a timer noticed late plays one coalesced alert
   (`restTimer.js` `dueCountdownAlert`), and Settings has a Sound check
   (test chime, audio state, recent-alert log) for diagnosing misses.
+- **Keep screen awake** (`wakeLock.js`, Settings toggle `keepScreenAwake`,
+  default on): the live workout screen holds a Screen Wake Lock so the
+  phone doesn't lock mid-rest — a locked page can't play timer chimes.
+  Released on leaving the screen; re-requested when the page becomes
+  visible again (the browser drops it when hidden). Best-effort; status
+  shows in Settings -> Sound check.
 - The rest (and cardio warm-up) countdown is sized to the screen width so
   it reads from a distance.
 
